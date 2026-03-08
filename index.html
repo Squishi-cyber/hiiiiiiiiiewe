@@ -1,0 +1,4235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vault — Security Suite</title><!-- v1773011444 -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0c0c14;
+      --surface: rgba(255,255,255,0.03);
+      --surface-hover: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.07);
+      --border-accent: rgba(139,92,246,0.35);
+      --purple: #8b5cf6;
+      --purple-light: #a78bfa;
+      --purple-dim: rgba(139,92,246,0.15);
+      --green: #4ade80;
+      --red: #f87171;
+      --orange: #f97316;
+      --orange-light: #fb923c;
+      --orange-dim: rgba(249,115,22,0.15);
+      --text: #ffffff;
+      --text-muted: rgba(255,255,255,0.35);
+      --text-dim: rgba(255,255,255,0.55);
+      --sidebar-w: 230px;
+      --radius: 20px;
+    }
+
+    html, body { height: 100%; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text); overflow: hidden; }
+
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    body::after {
+      content: ''; position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 15% 15%, rgba(139,92,246,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 85% 85%, rgba(59,130,246,0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(139,92,246,0.03) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ═══════════ AUTH PAGE ═══════════ */
+    #authPage {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.6s cubic-bezier(0.4,0,0.2,1), transform 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+    #authPage.hiding { opacity: 0; transform: scale(0.96); pointer-events: none; }
+
+    .auth-card {
+      position: relative; z-index: 1;
+      width: 440px; max-width: 93vw;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 28px;
+      padding: 42px 40px 38px;
+      backdrop-filter: blur(40px);
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.08), 0 32px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+      animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    .auth-card::before {
+      content: ''; position: absolute; inset: -1px; border-radius: 29px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.28), transparent 55%, rgba(96,165,250,0.12));
+      z-index: -1; opacity: 0.6;
+    }
+
+    /* logo */
+    .auth-logo { text-align: center; margin-bottom: 26px; }
+    .auth-logo-icon {
+      width: 54px; height: 54px; border-radius: 18px;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; margin: 0 auto 12px;
+      box-shadow: 0 8px 32px rgba(139,92,246,0.4);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .auth-title {
+      font-size: 22px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .auth-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.01em; }
+
+    /* tabs */
+    .tab-row {
+      display: flex; gap: 4px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px; padding: 4px;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 0; border-radius: 10px; border: none;
+      background: transparent; color: var(--text-muted);
+      font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      letter-spacing: 0;
+    }
+    .tab-btn.active {
+      background: rgba(139,92,246,0.18); color: var(--purple-light);
+      box-shadow: 0 2px 12px rgba(139,92,246,0.18);
+    }
+
+    /* panels */
+    .auth-panel { display: none; }
+    .auth-panel.active { display: block; animation: fadePanel 0.28s ease both; }
+
+    /* fields */
+    .field-group { display: flex; flex-direction: column; gap: 14px; }
+    .field-label {
+      font-size: 12px; color: var(--text-muted);
+      letter-spacing: 0.04em; font-weight: 500; margin-bottom: 7px;
+    }
+    .field-wrap { position: relative; }
+    .field-icon {
+      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+      font-size: 15px; opacity: 0.4; pointer-events: none; transition: opacity 0.2s;
+    }
+    .field-wrap:focus-within .field-icon { opacity: 0.85; }
+
+    input[type="text"], input[type="password"], input[type="email"] {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 14px;
+      padding: 14px 44px 14px 44px;
+      font-size: 15px; font-family: 'Inter', sans-serif;
+      color: var(--text); outline: none;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus {
+      border-color: rgba(139,92,246,0.5);
+      background: rgba(139,92,246,0.06);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+    }
+    input::placeholder { color: rgba(255,255,255,0.2); }
+
+    .eye-btn {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 16px; padding: 4px; transition: color 0.2s;
+    }
+    .eye-btn:hover { color: var(--text-dim); }
+
+    /* strength meter */
+    .strength-bar {
+      height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,0.07);
+      margin-top: 8px; overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%; border-radius: 2px;
+      transition: width 0.35s cubic-bezier(0.4,0,0.2,1), background 0.35s;
+      width: 0%;
+    }
+    .strength-label {
+      font-size: 11px;
+      margin-top: 4px; color: var(--text-muted); transition: color 0.3s;
+    }
+
+    /* messages */
+    .msg {
+      font-size: 12px;
+      min-height: 16px; margin: 10px 0 2px;
+      opacity: 0; transform: translateY(-4px);
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .msg.show { opacity: 1; transform: translateY(0); }
+    .msg.error { color: var(--red); }
+    .msg.success { color: var(--green); }
+
+    /* buttons */
+    .auth-btn {
+      width: 100%; padding: 15px; border-radius: 14px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 15px; font-weight: 700; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      position: relative; overflow: hidden; margin-top: 16px;
+      letter-spacing: 0;
+      box-shadow: 0 8px 24px rgba(109,40,217,0.35);
+    }
+    .auth-btn::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent);
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(109,40,217,0.45); }
+    .auth-btn:hover::after { opacity: 1; }
+    .auth-btn:active { transform: translateY(0); }
+    .auth-btn.loading { pointer-events: none; opacity: 0.8; }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+
+    /* optional label */
+    .opt-label { opacity: 0.4; font-size: 10px; }
+
+    /* ═══════════ DASHBOARD ═══════════ */
+    #app {
+      position: relative; z-index: 1; display: flex; height: 100vh;
+      opacity: 0; transition: opacity 0.5s ease;
+    }
+    #app.visible { opacity: 1; }
+
+    #sidebar {
+      width: var(--sidebar-w); min-height: 100vh; flex-shrink: 0;
+      background: rgba(255,255,255,0.015); border-right: 1px solid var(--border);
+      padding: 32px 14px; display: flex; flex-direction: column; gap: 6px;
+      backdrop-filter: blur(30px);
+    }
+    .logo { padding: 0 10px; margin-bottom: 36px; }
+    .logo-name {
+      font-size: 18px; font-weight: 700; letter-spacing: -0.01em;
+      color: #ffffff;
+    }
+    .logo-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em; margin-top: 2px; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 14px; cursor: pointer;
+      color: var(--text-muted); border: 1px solid transparent;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      font-size: 14px; font-weight: 500; user-select: none; text-decoration: none; font-family: 'Inter', sans-serif;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-dim); }
+    .nav-item.active { background: var(--purple-dim); border-color: var(--border-accent); color: var(--purple-light); }
+    .nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); box-shadow: 0 0 8px rgba(139,92,246,0.9); margin-left: auto; }
+    .sidebar-spacer { flex: 1; }
+
+    .sidebar-footer {
+      padding: 14px 10px 10px;
+      border-top: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .sidebar-version {
+      font-size: 11px; color: var(--text-muted); letter-spacing: 0.02em;
+      padding: 0 2px;
+    }
+
+    .sidebar-user {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+
+    .sidebar-user-left {
+      display: flex; align-items: center; gap: 9px;
+      overflow: hidden;
+    }
+
+    .sidebar-avatar {
+      width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 2px 10px rgba(139,92,246,0.3);
+    }
+
+    .sidebar-username {
+      font-size: 13px; font-weight: 600; color: var(--text-dim);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .logout-btn {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 10px; border-radius: 9px; border: none;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.18);
+      color: rgba(248,113,113,0.75);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer; letter-spacing: 0;
+      transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .logout-btn:hover {
+      background: rgba(248,113,113,0.15);
+      border-color: rgba(248,113,113,0.4);
+      color: #f87171;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(248,113,113,0.15);
+    }
+
+    .logout-btn:active { transform: translateY(0); }
+
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+    #topbar {
+      padding: 22px 36px; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.01);
+      backdrop-filter: blur(20px); flex-shrink: 0;
+    }
+    .greeting { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+    .greeting span { color: #a78bfa; }
+    .date-label { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+
+    .status-badge {
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2);
+      border-radius: 20px; padding: 6px 14px; font-size: 12px; color: var(--green); font-weight: 600;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse-ring 2.2s ease-in-out infinite; }
+
+    .avatar {
+      width: 42px; height: 42px; border-radius: 14px;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+      cursor: pointer; border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 4px 20px rgba(139,92,246,0.35);
+      transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s; flex-shrink: 0;
+    }
+    .avatar:hover { transform: scale(1.07); box-shadow: 0 8px 30px rgba(139,92,246,0.5); }
+
+    #content { flex: 1; overflow-y: auto; padding: 0 32px; scrollbar-width: thin; scrollbar-color: rgba(139,92,246,0.25) transparent; }
+    #content::-webkit-scrollbar { width: 4px; }
+    #content::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.25); border-radius: 2px; }
+
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      backdrop-filter: blur(20px); border-radius: var(--radius);
+      padding: 24px; position: relative; cursor: default; overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1); opacity: 0; transform: translateY(18px);
+    }
+    .card.visible { opacity: 1; transform: translateY(0); }
+    .card::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); background: linear-gradient(135deg, rgba(139,92,246,0.06), transparent); opacity: 0; transition: opacity 0.3s; }
+    .card:hover { background: var(--surface-hover); border-color: var(--border-accent); transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.08); }
+    .card:hover::before { opacity: 1; }
+    .card-bottom-line { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--purple), transparent); border-radius: 0 0 var(--radius) var(--radius); opacity: 0; transition: opacity 0.3s; }
+    .card:hover .card-bottom-line { opacity: 1; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+    .card-title { font-size: 12px; color: var(--text-muted); letter-spacing: 0.03em; font-weight: 500; }
+    .card-icon { font-size: 18px; opacity: 0.5; }
+    .card-value { font-size: 30px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; line-height: 1.1; }
+
+    .tooltip {
+      position: absolute; bottom: calc(100% + 10px); left: 50%;
+      transform: translateX(-50%) scale(0.92);
+      background: rgba(14,12,30,0.96); border: 1px solid var(--border-accent);
+      border-radius: 10px; padding: 8px 14px; font-size: 12px; color: rgba(255,255,255,0.75);
+      white-space: nowrap; z-index: 200; pointer-events: none; opacity: 0;
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1); backdrop-filter: blur(12px); font-family: 'Inter', sans-serif;
+    }
+    .card:hover .tooltip { opacity: 1; transform: translateX(-50%) scale(1); }
+
+    .chart-card {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(24px);
+      border-radius: 20px;
+      padding: 14px 18px 10px;
+      box-shadow:
+        0 0 0 1px rgba(139,92,246,0.07),
+        0 24px 64px rgba(0,0,0,0.35),
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        inset 0 0 80px rgba(20,240,220,0.015);
+      opacity: 0; transform: translateY(18px);
+      transition: opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1);
+      position: relative; overflow: hidden;
+    }
+    .chart-card::before {
+      content: '';
+      position: absolute; top: -80px; left: -80px;
+      width: 320px; height: 320px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(20,240,220,0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .chart-card.visible { opacity: 1; transform: translateY(0); }
+
+    .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .chart-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(255,255,255,0.5);
+    }
+    .chart-title-main {
+      font-size: 14px; font-weight: 700; letter-spacing: -0.01em;
+      color: #fff; margin-top: 3px;
+    }
+    .chart-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .chart-range-btns {
+      display: flex; gap: 4px; align-items: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; padding: 4px;
+    }
+    .range-btn {
+      padding: 6px 12px; border-radius: 7px; border: none;
+      background: transparent; color: rgba(255,255,255,0.4);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s ease; letter-spacing: 0.02em;
+    }
+    .range-btn:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.05); }
+    .range-btn.active {
+      background: rgba(139,92,246,0.2);
+      color: #a78bfa;
+      border: 1px solid rgba(139,92,246,0.3);
+      box-shadow: 0 2px 12px rgba(139,92,246,0.15);
+    }
+
+    .skeleton { display: flex; flex-direction: column; gap: 8px; }
+    .skel-line { height: 10px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%); background-size: 200% 100%; animation: shimmer 1.6s infinite; }
+    .skel-chart { height: 70px; border-radius: 14px; margin-top: 6px; background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 75%); background-size: 200% 100%; animation: shimmer 1.6s infinite 0.3s; }
+
+    .chart-svg-wrapper { position: relative; }
+    .chart-svg-wrapper svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+    #chart-tooltip {
+      position: absolute;
+      background: rgba(8,6,20,0.97);
+      border: 1px solid rgba(20,240,220,0.25);
+      border-radius: 12px; padding: 10px 16px; font-size: 12px; pointer-events: none;
+      opacity: 0; transition: opacity 0.15s; z-index: 50; backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(20,240,220,0.08);
+      transform: translate(-50%, -120%);
+    }
+    #chart-tooltip.show { opacity: 1; }
+    .ct-date { color: rgba(255,255,255,0.4); margin-bottom: 3px; font-size: 11px; }
+    .ct-value { color: #14f0dc; font-weight: 700; font-size: 15px; }
+
+    /* ═══════════ KEYFRAMES ═══════════ */
+    @keyframes popIn { from { opacity: 0; transform: scale(0.88) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes fadePanel { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes pulse-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); } 50% { box-shadow: 0 0 0 5px rgba(74,222,128,0); } }
+    @keyframes drawLine { from { stroke-dashoffset: 2000; } to { stroke-dashoffset: 0; } }
+    @keyframes fadeInPop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes promoBorderSweep { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    .promo-embed {
+      position: absolute;
+      width: 260px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(139,92,246,0.25);
+      border-radius: 18px;
+      padding: 16px 20px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.08), 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+      cursor: pointer;
+      user-select: none;
+      overflow: hidden;
+    }
+    .promo-buy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(109,40,217,0.4);
+      letter-spacing: 0.01em;
+    }
+    .promo-shimmer {
+      position: absolute; inset: -1px; border-radius: 18px;
+      background: linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.35) 50%, transparent 100%);
+      background-size: 200% 100%;
+      animation: promoBorderSweep 2.5s linear infinite;
+      pointer-events: none; z-index: -1;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+    .shake { animation: shake 0.45s cubic-bezier(0.36,0.07,0.19,0.97); }
+
+    @media (max-width: 700px) {
+      :root { --sidebar-w: 0px; }
+      #sidebar { display: none; }
+      #content { padding: 20px 16px; }
+      #topbar { padding: 16px 18px; }
+      .greeting { font-size: 16px; }
+      .cards-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .card-value { font-size: 26px; }
+      .auth-card { padding: 32px 20px 28px; }
+    }
+
+    /* ═══════════ CHAT ═══════════ */
+    .chat-unread-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--purple); box-shadow: 0 0 8px rgba(139,92,246,0.9);
+      margin-left: auto;
+      animation: pulse-ring 2.2s ease-in-out infinite;
+    }
+
+    #chatPage {
+      display: none;
+      flex-direction: column;
+      height: calc(100vh - 90px);
+      padding: 0 !important;
+    }
+    #chatPage.active {
+      display: flex !important;
+      animation: fadePanel 0.3s ease both;
+    }
+
+    .chat-header {
+      padding: 20px 32px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .chat-header-left { display: flex; flex-direction: column; gap: 3px; }
+    .chat-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+    .chat-title span { color: var(--purple-light); }
+    .chat-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+    .chat-online-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse-ring 2.2s ease-in-out infinite; }
+
+    .chat-online-count {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(74,222,128,0.07);
+      border: 1px solid rgba(74,222,128,0.16);
+      border-radius: 20px; padding: 5px 12px;
+      font-size: 12px; color: var(--green); font-weight: 600;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 32px;
+      display: flex; flex-direction: column; gap: 3px;
+      scrollbar-width: thin; scrollbar-color: rgba(139,92,246,0.2) transparent;
+    }
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.2); border-radius: 2px; }
+
+    .chat-day-divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 14px 0 10px;
+    }
+    .chat-day-divider::before, .chat-day-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .chat-day-label {
+      font-size: 11px; color: var(--text-muted); font-weight: 500;
+      letter-spacing: 0.04em; white-space: nowrap;
+    }
+
+    .chat-msg {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 6px 10px; border-radius: 12px;
+      transition: background 0.15s;
+      animation: fadePanel 0.25s ease both;
+    }
+    .chat-msg:hover { background: rgba(255,255,255,0.025); }
+    .chat-msg.mine { flex-direction: row-reverse; }
+
+    .chat-msg-avatar {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0; margin-top: 2px;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 2px 8px rgba(139,92,246,0.2);
+    }
+
+    .chat-msg-body { max-width: 72%; display: flex; flex-direction: column; gap: 3px; }
+    .chat-msg.mine .chat-msg-body { align-items: flex-end; }
+
+    .chat-msg-header { display: flex; align-items: baseline; gap: 8px; }
+    .chat-msg.mine .chat-msg-header { flex-direction: row-reverse; }
+    .chat-msg-name { font-size: 12px; font-weight: 700; color: var(--purple-light); }
+    .chat-msg-name.me-name { color: #34d399; }
+    .chat-msg-time { font-size: 10px; color: var(--text-muted); }
+
+    .chat-msg-bubble {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px 14px 14px 4px;
+      padding: 9px 14px;
+      font-size: 13.5px; line-height: 1.55; color: rgba(255,255,255,0.82);
+      word-break: break-word;
+    }
+    .chat-msg.mine .chat-msg-bubble {
+      background: rgba(139,92,246,0.13);
+      border-color: rgba(139,92,246,0.22);
+      border-radius: 14px 14px 4px 14px;
+      color: rgba(255,255,255,0.88);
+    }
+
+    /* group consecutive msgs */
+    .chat-msg.grouped { padding-top: 1px; }
+    .chat-msg.grouped .chat-msg-avatar { visibility: hidden; }
+    .chat-msg.grouped .chat-msg-header { display: none; }
+    .chat-msg.grouped .chat-msg-bubble { border-radius: 4px 14px 14px 4px; }
+    .chat-msg.mine.grouped .chat-msg-bubble { border-radius: 14px 4px 4px 14px; }
+
+    .chat-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; color: var(--text-muted); text-align: center;
+      padding: 40px;
+    }
+    .chat-empty-icon { font-size: 44px; opacity: 0.3; }
+    .chat-empty-title { font-size: 15px; font-weight: 600; color: var(--text-dim); }
+    .chat-empty-sub { font-size: 13px; max-width: 280px; line-height: 1.6; }
+
+    .chat-input-area {
+      padding: 16px 32px 20px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-input-wrap {
+      display: flex; align-items: flex-end; gap: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 18px; padding: 10px 14px;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .chat-input-wrap:focus-within {
+      border-color: rgba(139,92,246,0.45);
+      background: rgba(139,92,246,0.05);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+    }
+    #chatInput {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text); font-size: 14px; font-family: 'Inter', sans-serif;
+      resize: none; max-height: 120px; line-height: 1.5;
+      scrollbar-width: none;
+    }
+    #chatInput::placeholder { color: rgba(255,255,255,0.2); }
+    #chatInput::-webkit-scrollbar { display: none; }
+
+    .chat-send-btn {
+      width: 34px; height: 34px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      box-shadow: 0 4px 14px rgba(109,40,217,0.35);
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .chat-send-btn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(109,40,217,0.5); }
+    .chat-send-btn:active { transform: scale(0.95); }
+    .chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    .chat-input-hint {
+      font-size: 11px; color: var(--text-muted);
+      margin-top: 8px; padding: 0 4px;
+    }
+    .chat-input-hint kbd {
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; padding: 1px 5px; font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .chat-input-hint kbd {
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; padding: 1px 5px; font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .license-expiry-row {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 10px;
+      background: rgba(74,222,128,0.07);
+      border: 1px solid rgba(74,222,128,0.18);
+      border-radius: 10px;
+      animation: fadePanel 0.4s ease both;
+    }
+    .license-expiry-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(74,222,128,0.9);
+      animation: pulse-ring 2.2s ease-in-out infinite;
+    }
+    .license-expiry-text {
+      font-size: 11px; font-weight: 600; color: var(--green);
+      letter-spacing: 0.01em;
+    }
+
+    /* ═══════════ LICENSE ═══════════ */
+    .license-status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      margin-left: auto; display: none;
+    }
+    .license-status-dot.active {
+      display: block;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(74,222,128,0.9);
+      animation: pulse-ring 2.2s ease-in-out infinite;
+    }
+
+    #licenseOverlay {
+      position: fixed; inset: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(12px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    #licenseOverlay.show { opacity: 1; pointer-events: all; }
+
+    .license-modal {
+      position: relative;
+      width: 420px; max-width: 92vw;
+      background: rgba(10,8,22,0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 28px;
+      padding: 38px 36px 32px;
+      text-align: center;
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.12), 0 32px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
+      transform: scale(0.86) translateY(20px);
+      opacity: 0;
+      transition: transform 0.38s cubic-bezier(0.34,1.56,0.64,1), opacity 0.28s ease;
+    }
+    #licenseOverlay.show .license-modal { transform: scale(1) translateY(0); opacity: 1; }
+
+    .license-modal::before {
+      content: '';
+      position: absolute; inset: -1px; border-radius: 29px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.22), transparent 55%, rgba(74,222,128,0.08));
+      z-index: -1;
+    }
+
+    .license-modal-close {
+      position: absolute; top: 16px; right: 18px;
+      background: none; border: none; color: var(--text-muted);
+      font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .license-modal-close:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+
+    .license-modal-icon {
+      width: 62px; height: 62px; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(74,222,128,0.08));
+      border: 1px solid rgba(139,92,246,0.28);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; margin: 0 auto 20px;
+      box-shadow: 0 8px 28px rgba(139,92,246,0.18);
+    }
+
+    .license-modal-title {
+      font-size: 20px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .license-modal-sub {
+      font-size: 13px; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6;
+    }
+
+    .license-input-wrap {
+      position: relative; margin-bottom: 10px;
+    }
+    .license-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 14px;
+      padding: 14px 18px 14px 48px;
+      font-size: 15px; font-family: 'JetBrains Mono', monospace;
+      color: var(--text); outline: none;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      letter-spacing: 0.04em;
+      text-align: left;
+    }
+    .license-input:focus {
+      border-color: rgba(139,92,246,0.5);
+      background: rgba(139,92,246,0.06);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+    }
+    .license-input::placeholder { color: rgba(255,255,255,0.2); letter-spacing: 0.02em; font-family: 'Inter', sans-serif; }
+    .license-input-icon {
+      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+      font-size: 16px; opacity: 0.45; pointer-events: none;
+    }
+
+    .license-msg {
+      font-size: 13px; min-height: 18px; margin: 6px 0 18px;
+      opacity: 0; transform: translateY(-4px);
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      font-weight: 500;
+    }
+    .license-msg.show { opacity: 1; transform: translateY(0); }
+    .license-msg.error { color: var(--red); }
+    .license-msg.success { color: var(--green); }
+
+    .license-activate-btn {
+      width: 100%; padding: 15px; border-radius: 14px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 15px; font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 8px 24px rgba(109,40,217,0.35);
+      position: relative; overflow: hidden;
+    }
+    .license-activate-btn::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .license-activate-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(109,40,217,0.45); }
+    .license-activate-btn:hover::after { opacity: 1; }
+    .license-activate-btn:active { transform: translateY(0); }
+
+    /* Active license display */
+    .license-active-card {
+      display: none;
+      background: rgba(74,222,128,0.07);
+      border: 1px solid rgba(74,222,128,0.22);
+      border-radius: 18px; padding: 20px 22px;
+      text-align: left; margin-bottom: 20px;
+      animation: fadePanel 0.35s ease both;
+    }
+    .license-active-card.show { display: block; }
+    .license-active-card-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    }
+    .license-active-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3);
+      color: var(--green); font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 20px; letter-spacing: 0.04em;
+    }
+    .license-active-badge::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); display: inline-block;
+      box-shadow: 0 0 6px rgba(74,222,128,0.9);
+    }
+    .license-plan-name {
+      font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em;
+    }
+    .license-plan-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px; color: var(--text-muted); margin-top: 4px;
+    }
+    .license-plan-row span { color: var(--purple-light); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+    .license-deactivate-btn {
+      width: 100%; padding: 12px; border-radius: 12px; border: none;
+      background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.18);
+      color: rgba(248,113,113,0.8); font-size: 13px; font-weight: 600;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+    }
+    .license-deactivate-btn:hover {
+      background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.4);
+      color: #f87171; transform: translateY(-1px);
+    }
+    #logoutOverlay {
+      position: fixed; inset: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    #logoutOverlay.show { opacity: 1; pointer-events: all; }
+
+    .logout-modal {
+      position: relative;
+      width: 370px; max-width: 90vw;
+      background: rgba(11,9,24,0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 26px;
+      padding: 38px 34px 30px;
+      text-align: center;
+      box-shadow: 0 0 0 1px rgba(248,113,113,0.12), 0 32px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.05);
+      transform: scale(0.86) translateY(20px);
+      opacity: 0;
+      transition: transform 0.38s cubic-bezier(0.34,1.56,0.64,1), opacity 0.28s ease;
+    }
+    #logoutOverlay.show .logout-modal { transform: scale(1) translateY(0); opacity: 1; }
+
+    .logout-modal::before {
+      content: '';
+      position: absolute; inset: -1px; border-radius: 27px;
+      background: linear-gradient(135deg, rgba(248,113,113,0.18), transparent 55%);
+      z-index: -1;
+    }
+
+    .logout-modal-icon {
+      width: 60px; height: 60px; border-radius: 20px;
+      background: rgba(248,113,113,0.09);
+      border: 1px solid rgba(248,113,113,0.22);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; margin: 0 auto 22px;
+      box-shadow: 0 8px 28px rgba(248,113,113,0.12);
+    }
+
+    .logout-modal-title {
+      font-size: 19px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text); margin-bottom: 10px;
+    }
+
+    .logout-modal-sub {
+      font-size: 13px; color: var(--text-muted);
+      line-height: 1.65; margin-bottom: 30px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .logout-modal-sub span { color: var(--purple-light); font-weight: 700; }
+
+    .modal-btn-row { display: flex; gap: 10px; }
+
+    .modal-btn {
+      flex: 1; padding: 13px; border-radius: 13px; border: none;
+      font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+      letter-spacing: 0;
+    }
+
+    .modal-btn-cancel {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09);
+      color: var(--text-dim);
+    }
+    .modal-btn-cancel:hover {
+      background: rgba(255,255,255,0.09); color: var(--text); transform: translateY(-1px);
+    }
+
+    .modal-btn-confirm {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      border: 1px solid rgba(248,113,113,0.25);
+      color: #fff;
+      box-shadow: 0 6px 22px rgba(220,38,38,0.3);
+    }
+    .modal-btn-confirm:hover {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(220,38,38,0.45);
+    }
+    .modal-btn-confirm:active { transform: translateY(0); }
+
+    /* ═══════════ PURCHASE SECTION ═══════════ */
+    .section-label {
+      font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text-muted); font-weight: 500;
+      padding: 0 14px; margin: 14px 0 4px;
+    }
+
+    .nav-item.purchase-active {
+      background: rgba(249,115,22,0.14);
+      border-color: rgba(249,115,22,0.35);
+      color: #fb923c;
+    }
+    .nav-item.purchase-active .nav-dot { background: #f97316; box-shadow: 0 0 8px rgba(249,115,22,0.9); }
+
+    /* Plans grid */
+    #purchasePage { display: none; }
+    #purchasePage.active { display: block; animation: fadePanel 0.3s ease both; padding-top: 20px; }
+
+    .purchase-header { margin-bottom: 8px; }
+    .purchase-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+    .purchase-title span { color: #a78bfa; }
+    .purchase-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .plan-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      position: relative; overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+      animation: fadePanel 0.4s ease both;
+    }
+
+    .plan-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: 16px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.07), transparent);
+      opacity: 0; transition: opacity 0.3s;
+    }
+
+    .plan-card:hover {
+      border-color: rgba(139,92,246,0.4);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 48px rgba(0,0,0,0.3), 0 0 0 1px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.07);
+    }
+    .plan-card:hover::before { opacity: 1; }
+
+    .plan-card.popular {
+      border-color: rgba(139,92,246,0.3);
+      background: rgba(139,92,246,0.05);
+    }
+
+    .plan-popular-badge {
+      position: absolute; top: 12px; right: 12px;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 9px; font-weight: 700;
+      padding: 3px 8px; border-radius: 20px;
+      letter-spacing: 0.04em;
+      box-shadow: 0 4px 12px rgba(139,92,246,0.4);
+    }
+
+    .plan-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; margin-bottom: 12px;
+      background: rgba(139,92,246,0.1);
+      border: 1px solid rgba(139,92,246,0.2);
+    }
+
+    .plan-name {
+      font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text); margin-bottom: 3px;
+    }
+
+    .plan-duration {
+      font-size: 11px; color: var(--text-muted);
+      letter-spacing: 0.02em; font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .plan-price-row {
+      display: flex; align-items: baseline; gap: 3px; margin-bottom: 14px;
+    }
+
+    .plan-price {
+      font-size: 26px; font-weight: 700; letter-spacing: -0.01em;
+      color: #a78bfa;
+      line-height: 1;
+    }
+
+    .plan-currency {
+      font-size: 13px; font-weight: 600; color: #a78bfa;
+      opacity: 0.8; align-self: flex-start; margin-top: 3px;
+    }
+
+    .plan-features {
+      list-style: none; display: flex; flex-direction: column; gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .plan-features li {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--text-dim); font-weight: 400;
+    }
+
+    .plan-features li::before {
+      content: ''; width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(139,92,246,0.15);
+      border: 1px solid rgba(139,92,246,0.3);
+      display: flex; align-items: center; justify-content: center;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: center; background-size: 9px;
+    }
+
+    .plan-select-btn {
+      width: 100%; padding: 10px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 13px; font-weight: 600;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      letter-spacing: 0;
+      box-shadow: 0 6px 20px rgba(109,40,217,0.3);
+      position: relative; overflow: hidden;
+    }
+
+    .plan-select-btn::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent);
+      opacity: 0; transition: opacity 0.2s;
+    }
+
+    .plan-select-btn:hover {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(139,92,246,0.4);
+    }
+    .plan-select-btn:hover::after { opacity: 1; }
+    .plan-select-btn:active { transform: translateY(0); }
+
+    .plan-bottom-line {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+      border-radius: 0 0 16px 16px; opacity: 0; transition: opacity 0.3s;
+    }
+    .plan-card:hover .plan-bottom-line { opacity: 1; }
+
+    /* ═══════════ CHECKOUT MODAL ═══════════ */
+    #checkoutOverlay {
+      position: fixed; inset: 0; z-index: 600;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(12px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    #checkoutOverlay.show { opacity: 1; pointer-events: all; }
+
+    .checkout-modal {
+      position: relative;
+      width: 460px; max-width: 93vw; max-height: 90vh; overflow-y: auto;
+      background: rgba(10,8,22,0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 26px;
+      padding: 36px 34px 32px;
+      box-shadow:
+        0 0 0 1px rgba(249,115,22,0.12),
+        0 40px 100px rgba(0,0,0,0.8),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+      transform: scale(0.86) translateY(24px);
+      opacity: 0;
+      transition: transform 0.38s cubic-bezier(0.34,1.56,0.64,1), opacity 0.28s ease;
+      scrollbar-width: none;
+    }
+    .checkout-modal::-webkit-scrollbar { display: none; }
+    #checkoutOverlay.show .checkout-modal { transform: scale(1) translateY(0); opacity: 1; }
+
+    .checkout-modal::before {
+      content: ''; position: absolute; inset: -1px; border-radius: 27px;
+      background: linear-gradient(135deg, rgba(249,115,22,0.2), transparent 55%);
+      z-index: -1;
+    }
+
+    .checkout-close {
+      position: absolute; top: 16px; right: 16px;
+      width: 32px; height: 32px; border-radius: 10px; border: none;
+      background: rgba(255,255,255,0.06); color: var(--text-muted);
+      font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .checkout-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    .checkout-plan-header {
+      display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .checkout-plan-icon {
+      width: 52px; height: 52px; border-radius: 16px; flex-shrink: 0;
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+
+    .checkout-plan-name {
+      font-size: 18px; font-weight: 700; letter-spacing: -0.01em;
+    }
+
+    .checkout-plan-desc {
+      font-size: 12px; color: var(--text-muted); margin-top: 4px;
+    }
+
+    .checkout-plan-price {
+      margin-left: auto; text-align: right; flex-shrink: 0;
+    }
+
+    .checkout-price-value {
+      font-size: 26px; font-weight: 700; letter-spacing: -0.01em;
+      color: #f97316;
+      line-height: 1;
+    }
+
+    .checkout-price-label {
+      font-size: 12px; color: var(--text-muted); margin-top: 3px;
+    }
+
+    .checkout-section-title {
+      font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text-muted); font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .wallet-block {
+      background: rgba(249,115,22,0.06);
+      border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 14px; padding: 16px 18px;
+      margin-bottom: 20px;
+    }
+
+    .wallet-label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: #fb923c;
+      font-weight: 600; margin-bottom: 8px; letter-spacing: 0.02em;
+    }
+
+    .wallet-ltc-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #fb923c;
+      box-shadow: 0 0 8px rgba(251,146,60,0.7);
+    }
+
+    .wallet-address {
+      font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim); word-break: break-all;
+      line-height: 1.6; letter-spacing: 0.01em;
+    }
+
+    .wallet-copy-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid rgba(249,115,22,0.12);
+    }
+
+    .copy-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 12px; border-radius: 8px; border: none;
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.2);
+      color: #fb923c; font-size: 11px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s; letter-spacing: 0.02em;
+    }
+    .copy-btn:hover { background: rgba(249,115,22,0.2); }
+
+    .network-badge {
+      font-size: 11px;
+      color: var(--text-muted); letter-spacing: 0.02em;
+      background: rgba(255,255,255,0.05); border-radius: 6px; padding: 3px 10px;
+    }
+
+    .checkout-info-row {
+      display: flex; gap: 10px; margin-bottom: 22px;
+    }
+
+    .checkout-info-chip {
+      flex: 1; background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 12px 14px;
+      text-align: center;
+    }
+
+    .info-chip-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.03em; text-transform: uppercase; font-weight: 500; margin-bottom: 4px; }
+    .info-chip-value { font-size: 14px; font-weight: 700; color: var(--text); }
+
+    .invoice-btn {
+      width: 100%; padding: 15px; border-radius: 14px; border: none;
+      background: linear-gradient(135deg, #ea580c, #c2410c);
+      color: #fff; font-size: 15px; font-weight: 700;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      letter-spacing: 0;
+      box-shadow: 0 8px 28px rgba(234,88,12,0.35);
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      position: relative; overflow: hidden;
+    }
+    .invoice-btn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent); opacity: 0; transition: opacity 0.2s; }
+    .invoice-btn:hover { background: linear-gradient(135deg, #f97316, #ea580c); transform: translateY(-2px); box-shadow: 0 14px 36px rgba(249,115,22,0.45); }
+    .invoice-btn:hover::after { opacity: 1; }
+    .invoice-btn:active { transform: translateY(0); }
+
+    .invoice-btn.created {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      box-shadow: 0 8px 28px rgba(22,163,74,0.3);
+      pointer-events: none;
+    }
+
+    .checkout-note {
+      text-align: center; margin-top: 14px;
+      font-size: 12px; color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+
+    /* ═══════════ SETTINGS PAGE ═══════════ */
+    #settingsPage { display: none; }
+    #settingsPage.active { display: block; animation: fadePanel 0.3s ease both; padding-top: 0; }
+
+    .settings-header { margin-bottom: 20px; }
+    .settings-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+    .settings-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    .settings-section {
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.07);
+      overflow: hidden;
+      margin-bottom: 16px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .settings-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: background 0.2s;
+      user-select: none;
+    }
+    .settings-section-header:hover { background: rgba(255,255,255,0.03); }
+    .settings-section-header.open { border-bottom-color: rgba(255,255,255,0.06); }
+
+    .settings-section-left { display: flex; align-items: center; gap: 12px; }
+
+    .settings-section-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+      background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2);
+      flex-shrink: 0;
+    }
+
+    .settings-section-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .settings-section-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .settings-chevron {
+      width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+      flex-shrink: 0;
+    }
+    .settings-chevron.open { transform: rotate(180deg); }
+
+    .settings-section-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    .settings-section-body.open { max-height: 500px; }
+
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 15px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .settings-row:last-child { border-bottom: none; }
+
+    .settings-row-left {}
+    .settings-row-label { font-size: 14px; font-weight: 500; color: var(--text); }
+    .settings-row-hint { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .settings-row-value {
+      font-size: 13px; color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.05em;
+    }
+
+    .settings-btn {
+      padding: 7px 16px; border-radius: 9px; border: none;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+      letter-spacing: 0;
+    }
+
+    .settings-btn-purple {
+      background: rgba(139,92,246,0.15);
+      border: 1px solid rgba(139,92,246,0.3);
+      color: #a78bfa;
+    }
+    .settings-btn-purple:hover {
+      background: rgba(139,92,246,0.25);
+      transform: translateY(-1px);
+    }
+
+    .settings-btn-orange {
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.25);
+      color: #fb923c;
+    }
+    .settings-btn-orange:hover {
+      background: rgba(249,115,22,0.22);
+      transform: translateY(-1px);
+    }
+
+    .settings-btn-red {
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.25);
+      color: #f87171;
+    }
+    .settings-btn-red:hover {
+      background: rgba(248,113,113,0.2);
+      transform: translateY(-1px);
+    }
+
+    /* Change password inline form */
+    .change-pass-form {
+      padding: 16px 20px 20px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      display: none;
+      flex-direction: column; gap: 12px;
+      background: rgba(0,0,0,0.15);
+    }
+    .change-pass-form.open { display: flex; }
+
+    .cpf-row { display: flex; flex-direction: column; gap: 5px; }
+    .cpf-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+    .cpf-input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; font-family: 'Inter', sans-serif;
+      color: var(--text); outline: none;
+      transition: border-color 0.2s;
+    }
+    .cpf-input:focus { border-color: rgba(139,92,246,0.4); }
+    .cpf-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+    .cpf-save {
+      padding: 9px 20px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 13px; font-weight: 600;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(109,40,217,0.3);
+    }
+    .cpf-save:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(109,40,217,0.4); }
+
+    .cpf-cancel {
+      padding: 9px 16px; border-radius: 10px; border: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09);
+      color: var(--text-muted); font-size: 13px; font-weight: 500;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cpf-cancel:hover { background: rgba(255,255,255,0.09); color: var(--text); }
+    .cpf-msg { font-size: 12px; min-height: 16px; }
+    .cpf-msg.ok { color: var(--green); }
+    .cpf-msg.err { color: var(--red); }
+
+
+    /* ═══════════ CHANGE PASSWORD MODAL ═══════════ */
+    #changePassOverlay {
+      position: fixed; inset: 0; z-index: 600;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #changePassOverlay.show { opacity: 1; pointer-events: all; }
+
+    .cpmodal {
+      position: relative;
+      width: 400px; max-width: 92vw;
+      background: rgba(10,8,22,0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 22px;
+      padding: 30px 28px 26px;
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.1), 0 32px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.05);
+      transform: scale(0.88) translateY(16px);
+      opacity: 0;
+      transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease;
+    }
+    #changePassOverlay.show .cpmodal { transform: scale(1) translateY(0); opacity: 1; }
+
+    .cpmodal::before {
+      content: ''; position: absolute; inset: -1px; border-radius: 23px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.2), transparent 55%);
+      z-index: -1;
+    }
+
+    .cpmodal-close {
+      position: absolute; top: 14px; right: 14px;
+      width: 30px; height: 30px; border-radius: 8px; border: none;
+      background: rgba(255,255,255,0.06); color: var(--text-muted);
+      font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .cpmodal-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    .cpmodal-icon {
+      width: 46px; height: 46px; border-radius: 14px;
+      background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.22);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 16px;
+    }
+
+    .cpmodal-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .cpmodal-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 22px; }
+
+    .cpmodal-field { margin-bottom: 14px; }
+    .cpmodal-label { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; }
+    .cpmodal-input {
+      width: 100%; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 11px; padding: 11px 14px;
+      font-size: 14px; font-family: 'Inter', sans-serif;
+      color: var(--text); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .cpmodal-input:focus {
+      border-color: rgba(139,92,246,0.45);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+    }
+
+    .cpmodal-msg { font-size: 12px; min-height: 18px; margin: 8px 0 14px; }
+    .cpmodal-msg.ok { color: var(--green); }
+    .cpmodal-msg.err { color: var(--red); }
+
+    .cpmodal-actions { display: flex; gap: 8px; }
+    .cpmodal-save {
+      flex: 1; padding: 11px; border-radius: 11px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 14px; font-weight: 600;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(109,40,217,0.3);
+      transition: all 0.2s;
+    }
+    .cpmodal-save:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(109,40,217,0.4); }
+    .cpmodal-cancel-btn {
+      padding: 11px 18px; border-radius: 11px; border: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09);
+      color: var(--text-muted); font-size: 14px; font-weight: 500;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cpmodal-cancel-btn:hover { background: rgba(255,255,255,0.09); color: var(--text); }
+
+
+    /* ═══════════ PROFILE SETTINGS ═══════════ */
+    .profile-preview {
+      width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
+      border: 1px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; overflow: hidden;
+      box-shadow: 0 4px 14px rgba(139,92,246,0.3);
+    }
+    .profile-preview img {
+      width: 100%; height: 100%; object-fit: cover; border-radius: 13px;
+    }
+
+    .emoji-picker-row {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 0 0 4px;
+    }
+    .emoji-pick-label {
+      font-size: 11px; color: var(--text-muted); font-weight: 500;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .emoji-options {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .emoji-opt {
+      width: 34px; height: 34px; border-radius: 9px; border: none;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      font-size: 17px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.18s; line-height: 1;
+    }
+    .emoji-opt:hover {
+      background: rgba(139,92,246,0.15);
+      border-color: rgba(139,92,246,0.3);
+      transform: scale(1.12);
+    }
+    .emoji-opt.selected {
+      background: rgba(139,92,246,0.2);
+      border-color: rgba(139,92,246,0.5);
+      box-shadow: 0 0 10px rgba(139,92,246,0.25);
+    }
+
+    /* avatar image support */
+    .sidebar-avatar img, .avatar img {
+      width: 100%; height: 100%; object-fit: cover; border-radius: inherit;
+    }
+
+
+    /* ═══════════ DELETE ACCOUNT MODAL ═══════════ */
+    #deleteOverlay {
+      position: fixed; inset: 0; z-index: 700;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(10px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #deleteOverlay.show { opacity: 1; pointer-events: all; }
+
+    .delete-modal {
+      position: relative;
+      width: 400px; max-width: 92vw;
+      background: rgba(10,8,22,0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 22px;
+      padding: 32px 28px 26px;
+      text-align: center;
+      box-shadow: 0 0 0 1px rgba(248,113,113,0.12), 0 32px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+      transform: scale(0.88) translateY(16px);
+      opacity: 0;
+      transition: transform 0.32s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease;
+    }
+    #deleteOverlay.show .delete-modal { transform: scale(1) translateY(0); opacity: 1; }
+
+    .delete-modal::before {
+      content: ''; position: absolute; inset: -1px; border-radius: 23px;
+      background: linear-gradient(135deg, rgba(248,113,113,0.18), transparent 55%);
+      z-index: -1;
+    }
+
+    .delete-modal-close {
+      position: absolute; top: 14px; right: 14px;
+      width: 30px; height: 30px; border-radius: 8px; border: none;
+      background: rgba(255,255,255,0.06); color: var(--text-muted);
+      font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .delete-modal-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    .delete-modal-icon {
+      width: 56px; height: 56px; border-radius: 18px;
+      background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin: 0 auto 18px;
+      box-shadow: 0 8px 24px rgba(248,113,113,0.12);
+    }
+
+    .delete-modal-title {
+      font-size: 18px; font-weight: 700; color: var(--text);
+      margin-bottom: 8px; letter-spacing: -0.01em;
+    }
+
+    .delete-modal-body {
+      font-size: 13px; color: var(--text-muted);
+      line-height: 1.65; margin-bottom: 10px;
+    }
+    .delete-modal-body strong { color: var(--red); font-weight: 600; }
+
+    .delete-confirm-row {
+      margin: 16px 0 20px;
+    }
+    .delete-confirm-label {
+      font-size: 12px; color: var(--text-muted); margin-bottom: 7px;
+      text-align: left; font-weight: 500;
+    }
+    .delete-confirm-input {
+      width: 100%; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 11px; padding: 11px 14px;
+      font-size: 14px; font-family: 'Inter', sans-serif;
+      color: var(--text); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      text-align: center; letter-spacing: 0.04em;
+    }
+    .delete-confirm-input:focus {
+      border-color: rgba(248,113,113,0.45);
+      box-shadow: 0 0 0 3px rgba(248,113,113,0.1);
+    }
+
+    .delete-modal-msg { font-size: 12px; min-height: 16px; margin-bottom: 14px; color: var(--red); }
+
+    .delete-modal-actions { display: flex; gap: 8px; }
+    .delete-modal-cancel {
+      flex: 1; padding: 11px; border-radius: 11px; border: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09);
+      color: var(--text-muted); font-size: 14px; font-weight: 500;
+      font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s;
+    }
+    .delete-modal-cancel:hover { background: rgba(255,255,255,0.09); color: var(--text); }
+
+    .delete-modal-confirm {
+      flex: 1; padding: 11px; border-radius: 11px; border: none;
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: #fff; font-size: 14px; font-weight: 600;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(220,38,38,0.3);
+      transition: all 0.2s;
+    }
+    .delete-modal-confirm:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(220,38,38,0.4); }
+    .delete-modal-confirm:active { transform: translateY(0); }
+
+
+    /* ═══════════ STATUS SECTION ═══════════ */
+    .status-options { display: flex; flex-direction: column; gap: 0; }
+
+    .status-option {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.18s;
+    }
+    .status-option:last-child { border-bottom: none; }
+    .status-option:hover { background: rgba(255,255,255,0.03); }
+
+    .status-option-left { display: flex; align-items: center; gap: 12px; }
+
+    .status-dot-indicator {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .status-dot-online  { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.7); }
+    .status-dot-offline { background: rgba(255,255,255,0.25); }
+    .status-dot-dnd     { background: #f87171; box-shadow: 0 0 8px rgba(248,113,113,0.6); }
+
+    .status-option-name { font-size: 14px; font-weight: 500; color: var(--text); }
+    .status-option-desc { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+    .status-radio {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.2s;
+    }
+    .status-radio.checked {
+      border-color: var(--purple);
+      background: rgba(139,92,246,0.15);
+    }
+    .status-radio.checked::after {
+      content: ''; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--purple);
+    }
+
+    /* live topbar status badge updates */
+    .status-badge.offline {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.4);
+    }
+    .status-badge.dnd {
+      background: rgba(248,113,113,0.08);
+      border-color: rgba(248,113,113,0.22);
+      color: #f87171;
+    }
+    .status-dot.offline { background: rgba(255,255,255,0.3); animation: none; }
+    .status-dot.dnd { background: #f87171; animation: none; box-shadow: 0 0 8px rgba(248,113,113,0.5); }
+
+
+    /* ═══════════ APPEARANCE SECTION ═══════════ */
+    .appearance-block {
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .appearance-block:last-child { border-bottom: none; }
+
+    .appearance-row-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .appearance-row-left { display: flex; align-items: center; gap: 10px; }
+    .appearance-row-icon {
+      width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+      background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2);
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .appearance-row-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .appearance-row-sub   { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+    .appearance-value     { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
+    /* Brightness slider */
+    .brightness-slider {
+      width: 100%; height: 4px; border-radius: 2px; outline: none;
+      -webkit-appearance: none; appearance: none;
+      background: linear-gradient(to right, var(--purple) 0%, var(--purple) 36%, rgba(255,255,255,0.12) 36%);
+      cursor: pointer; transition: background 0.1s;
+    }
+    .brightness-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; border: 2px solid var(--purple);
+      box-shadow: 0 2px 8px rgba(139,92,246,0.4);
+      cursor: pointer; transition: transform 0.15s;
+    }
+    .brightness-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+    /* Custom color row */
+    .color-swatches {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+    }
+    .color-swatch {
+      width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+      border: 2px solid transparent; transition: all 0.18s;
+      position: relative; flex-shrink: 0;
+    }
+    .color-swatch:hover { transform: scale(1.12); }
+    .color-swatch.active {
+      border-color: #fff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .color-swatch.custom-swatch {
+      background: rgba(255,255,255,0.08);
+      border: 2px dashed rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--text-muted);
+    }
+
+    .color-active-badge {
+      background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);
+      color: #a78bfa; font-size: 11px; font-weight: 600;
+      padding: 3px 8px; border-radius: 6px; letter-spacing: 0.03em;
+    }
+
+    .color-preview-bar {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 12px 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .color-preview-label { font-size: 11px; color: var(--text-muted); }
+    .preview-track {
+      flex: 1; height: 6px; border-radius: 3px;
+      background: rgba(255,255,255,0.08); overflow: hidden;
+    }
+    .preview-track-fill { height: 100%; width: 75%; border-radius: 3px; transition: background 0.3s; }
+    .preview-btn {
+      padding: 6px 14px; border-radius: 8px; border: none;
+      font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: all 0.2s; color: #fff;
+    }
+
+    /* Preset themes */
+    .theme-presets { display: flex; flex-wrap: wrap; gap: 10px; }
+    .theme-preset {
+      flex: 1; min-width: 90px; max-width: 120px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 10px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .theme-preset:hover { border-color: rgba(139,92,246,0.3); transform: translateY(-2px); }
+    .theme-preset.active { border-color: var(--purple); background: rgba(139,92,246,0.08); }
+
+    .theme-preview {
+      border-radius: 7px; overflow: hidden; margin-bottom: 8px;
+      background: #1a1a2e; padding: 8px; display: flex; flex-direction: column; gap: 5px;
+    }
+    .theme-preview-line {
+      height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.2); width: 70%;
+    }
+    .theme-preview-line.short { width: 45%; }
+    .theme-preview-accent {
+      height: 6px; border-radius: 2px; width: 40%; margin-top: 2px;
+    }
+    .theme-preset-name { font-size: 12px; font-weight: 600; color: var(--text-muted); text-align: center; }
+    .theme-preset.active .theme-preset-name { color: #a78bfa; }
+
+    /* Accent color picker (hex input) */
+    .hex-input-row { display: flex; align-items: center; gap: 8px; }
+    .hex-preview-box {
+      width: 28px; height: 28px; border-radius: 7px;
+      border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .hex-input {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 5px 10px;
+      font-size: 12px; font-family: 'JetBrains Mono', monospace;
+      color: var(--text); outline: none; width: 100px;
+      transition: border-color 0.2s;
+    }
+    .hex-input:focus { border-color: rgba(139,92,246,0.4); }
+
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ AUTH PAGE ═══════════════ -->
+<div id="authPage">
+  <div class="auth-card" id="authCard">
+
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🔐</div>
+      <div class="auth-title">Vault</div>
+      <div class="auth-sub">SECURITY SUITE · v2.4.1</div>
+    </div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" id="tabLogin"  onclick="switchTab('login')">Sign In</button>
+      <button class="tab-btn"        id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="auth-panel active" id="panelLogin">
+      <div class="field-group">
+        <div>
+          <div class="field-label">Username</div>
+          <div class="field-wrap">
+            <span class="field-icon">👤</span>
+            <input type="text" id="loginUser" placeholder="Enter your username" autocomplete="off" />
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Password</div>
+          <div class="field-wrap">
+            <span class="field-icon">🔑</span>
+            <input type="password" id="loginPass" placeholder="Enter your password" autocomplete="off" />
+            <button class="eye-btn" onclick="toggleEye('loginPass',this)" tabindex="-1">👁</button>
+          </div>
+        </div>
+      </div>
+      <div class="msg error" id="loginErr"></div>
+      <button class="auth-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    </div>
+
+    <!-- SIGN UP -->
+    <div class="auth-panel" id="panelSignup">
+      <div class="field-group">
+        <div>
+          <div class="field-label">Username</div>
+          <div class="field-wrap">
+            <span class="field-icon">👤</span>
+            <input type="text" id="regUser" placeholder="Choose a username" autocomplete="off" />
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Email <span class="opt-label">(optional)</span></div>
+          <div class="field-wrap">
+            <span class="field-icon">✉️</span>
+            <input type="email" id="regEmail" placeholder="your@email.com" autocomplete="off" />
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Password</div>
+          <div class="field-wrap">
+            <span class="field-icon">🔑</span>
+            <input type="password" id="regPass" placeholder="Create a strong password" autocomplete="off" oninput="checkStrength(this.value)" />
+            <button class="eye-btn" onclick="toggleEye('regPass',this)" tabindex="-1">👁</button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+          <div class="strength-label" id="strengthLabel">Password strength</div>
+        </div>
+        <div>
+          <div class="field-label">Confirm Password</div>
+          <div class="field-wrap">
+            <span class="field-icon">✅</span>
+            <input type="password" id="regConfirm" placeholder="Repeat your password" autocomplete="off" />
+            <button class="eye-btn" onclick="toggleEye('regConfirm',this)" tabindex="-1">👁</button>
+          </div>
+        </div>
+      </div>
+      <div class="msg" id="regMsg"></div>
+      <button class="auth-btn" id="signupBtn" onclick="doSignup()">Create Account</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div id="app">
+  <nav id="sidebar">
+    <div class="logo">
+      <div class="logo-name">Vault</div>
+      <div class="logo-sub">SECURITY SUITE</div>
+    </div>
+    <div class="nav-item active" data-nav="Dashboard" onclick="showDashboard();document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active','purchase-active'));this.classList.add('active')">
+      <span class="nav-icon">⬡</span> Dashboard <span class="nav-dot"></span>
+    </div>
+    <div class="nav-item" data-nav="Chat" onclick="showChat()">
+      <span class="nav-icon">💬</span> Chat <span class="chat-unread-dot" id="chatUnreadDot" style="display:none;"></span>
+    </div>
+    <div class="section-label">Store</div>
+    <div class="nav-item" data-nav="Purchase" onclick="showPurchase()">
+      <span class="nav-icon">🛒</span> Purchase
+    </div>
+    <div class="section-label">Account</div>
+    <div class="nav-item" data-nav="Settings" onclick="showSettings()">
+      <span class="nav-icon">⚙️</span> Settings
+    </div>
+    <div class="section-label">License</div>
+    <div class="nav-item" data-nav="License" onclick="openLicenseModal()">
+      <span class="nav-icon">🔑</span> Activate License <span class="license-status-dot" id="licenseNavDot"></span>
+    </div>
+    <div class="section-label">Community</div>
+    <a class="nav-item" data-nav="Discord" href="https://discord.gg/dpSk4hs9" target="_blank" rel="noopener noreferrer">
+      <span class="nav-icon">◎</span> Discord
+    </a>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-footer">
+      <div class="sidebar-version">v2.4.1 · secure</div>
+      <div class="license-expiry-row" id="licenseExpiryRow" style="display:none;">
+        <div class="license-expiry-dot"></div>
+        <span class="license-expiry-text" id="licenseExpiryText">30 days remaining</span>
+      </div>
+      <div class="sidebar-user">
+        <div class="sidebar-user-left">
+          <div class="sidebar-avatar" id="sidebarAvatar"><span id="sidebarAvatarEmoji">🦁</span></div>
+          <div class="sidebar-username" id="sidebarUsername">user</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log Out
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div id="main">
+    <header id="topbar">
+      <div>
+        <div class="greeting">Good evening, <span id="greetName">user</span></div>
+        <div class="date-label" id="dateLabel"></div>
+      </div>
+      <div class="topbar-right">
+        <div class="status-badge"><div class="status-dot"></div>Online</div>
+        <div class="avatar" id="topbarAvatar" title="Profile"><span id="topbarAvatarEmoji">🦁</span></div>
+      </div>
+    </header>
+
+    <div id="content">
+      <div id="dashboardPage" style="padding-top:20px">
+      <div class="cards-grid">
+        <div class="card" data-delay="300">
+          <div class="tooltip">Total registered accounts in your workspace</div>
+          <div class="card-header"><div class="card-title">Total Accounts</div><div class="card-icon">👤</div></div>
+          <div class="card-value">0</div>
+          <div class="card-bottom-line"></div>
+        </div>
+        <div class="card" data-delay="420">
+          <div class="tooltip">Accounts fully secured — 0% coverage</div>
+          <div class="card-header"><div class="card-title">Accounts Secured</div><div class="card-icon">🔒</div></div>
+          <div class="card-value">0</div>
+          <div class="card-bottom-line"></div>
+        </div>
+        <div class="card" data-delay="540">
+          <div class="tooltip">Combined value across all secured accounts</div>
+          <div class="card-header"><div class="card-title">Total Networth</div><div class="card-icon">💎</div></div>
+          <div class="card-value">$0.00</div>
+          <div class="card-bottom-line"></div>
+        </div>
+        <div class="card" data-delay="660">
+          <div class="tooltip">No active shared links at this time</div>
+          <div class="card-header"><div class="card-title">Shared Links</div><div class="card-icon">🔗</div></div>
+          <div class="card-value">0</div>
+          <div class="card-bottom-line"></div>
+        </div>
+      </div>
+
+      <div class="chart-card" id="chartCard">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Secure History</div>
+            <div class="chart-title-main">Account Security</div>
+            <div class="chart-subtitle">Account security trends over time</div>
+          </div>
+          <div class="chart-range-btns">
+            <button class="range-btn" onclick="setRange('1W',this)">1W</button>
+            <button class="range-btn" onclick="setRange('1M',this)">1M</button>
+            <button class="range-btn active" onclick="setRange('1Y',this)">1Y</button>
+            <button class="range-btn" onclick="setRange('ALL',this)">ALL</button>
+          </div>
+        </div>
+        <div class="skeleton" id="skeleton">
+          <div class="skel-line" style="width:55%"></div>
+          <div class="skel-chart"></div>
+        </div>
+        <div class="chart-svg-wrapper" id="chartWrapper" style="display:none;position:relative;">
+          <div id="chart-tooltip">
+            <div class="ct-date" id="tt-date"></div>
+            <div class="ct-value" id="tt-value"></div>
+          </div>
+          <svg id="chartSvg" viewBox="0 0 760 90" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+
+      <!-- PROMO EMBED -->
+      <div style="position:relative; height:110px; margin-top:18px; margin-bottom:8px; overflow:hidden;">
+        <div id="promoEmbed" class="promo-embed" onclick="showPurchase()">
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.06em;text-transform:uppercase;font-weight:600;margin-bottom:6px;">💡 Pro Tip</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.01em;line-height:1.3;">Tired of trash method?</div>
+          <div style="margin-top:10px;">
+            <span class="promo-buy-btn">⚡ Buy Premium</span>
+          </div>
+          <div class="promo-shimmer"></div>
+        </div>
+      </div>
+
+      </div><!-- /dashboardPage -->
+
+      <!-- CHAT PAGE -->
+      <div id="chatPage" style="display:none;height:calc(100vh - 90px);padding-top:0;display:none;flex-direction:column;">
+
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-title">Community <span>Chat</span></div>
+            <div class="chat-meta">
+              <div class="chat-online-dot"></div>
+              <span>Live chat · all members</span>
+            </div>
+          </div>
+          <div class="chat-online-count">
+            <div class="chat-online-dot"></div>
+            <span id="chatOnlineCount">1 online</span>
+          </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-empty" id="chatEmpty">
+            <div class="chat-empty-icon">💬</div>
+            <div class="chat-empty-title">No messages yet</div>
+            <div class="chat-empty-sub">Be the first to say something to the community!</div>
+          </div>
+        </div>
+
+        <div class="chat-input-area">
+          <div class="chat-input-wrap">
+            <textarea id="chatInput" rows="1" placeholder="Write a message…" onkeydown="chatKeydown(event)" oninput="autoResizeChat(this)"></textarea>
+            <button class="chat-send-btn" id="chatSendBtn" onclick="sendChatMessage()" title="Send message">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+          <div class="chat-input-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</div>
+        </div>
+
+      </div>
+
+      <!-- PURCHASE PAGE -->
+      <div id="purchasePage">
+        <div class="purchase-header">
+          <div class="purchase-title">Choose a <span>License Plan</span></div>
+          <div class="purchase-sub">One-time payment · Instant activation · LTC accepted</div>
+        </div>
+        <div class="plans-grid">
+
+          <!-- 30 Days -->
+          <div class="plan-card">
+            <div class="plan-icon">⚡</div>
+            <div class="plan-name">Starter</div>
+            <div class="plan-duration">30 Days License</div>
+            <div class="plan-price-row">
+              <span class="plan-currency">$</span>
+              <span class="plan-price">9.99</span>
+            </div>
+            <ul class="plan-features">
+              <li>Full dashboard access</li>
+              <li>Account security tools</li>
+              <li>Discord community</li>
+              <li>30 days of updates</li>
+            </ul>
+            <button class="plan-select-btn" onclick="openCheckout('Starter','30 Days License','9.99','⚡','30-day full access to Vault Security Suite')">Select Plan</button>
+            <div class="plan-bottom-line"></div>
+          </div>
+
+          <!-- 60 Days -->
+          <div class="plan-card popular">
+            <div class="plan-popular-badge">BEST VALUE</div>
+            <div class="plan-icon">🔥</div>
+            <div class="plan-name">Pro</div>
+            <div class="plan-duration">60 Days License</div>
+            <div class="plan-price-row">
+              <span class="plan-currency">$</span>
+              <span class="plan-price">16.99</span>
+            </div>
+            <ul class="plan-features">
+              <li>Everything in Starter</li>
+              <li>Priority support</li>
+              <li>Advanced security tools</li>
+              <li>60 days of updates</li>
+            </ul>
+            <button class="plan-select-btn" onclick="openCheckout('Pro','60 Days License','16.99','🔥','60-day full access · Priority support included')">Select Plan</button>
+            <div class="plan-bottom-line"></div>
+          </div>
+
+          <!-- Lifetime -->
+          <div class="plan-card">
+            <div class="plan-icon">♾️</div>
+            <div class="plan-name">Lifetime</div>
+            <div class="plan-duration">Permanent License</div>
+            <div class="plan-price-row">
+              <span class="plan-currency">$</span>
+              <span class="plan-price">49.99</span>
+            </div>
+            <ul class="plan-features">
+              <li>Everything in Pro</li>
+              <li>Lifetime updates</li>
+              <li>VIP support channel</li>
+              <li>Early access to features</li>
+            </ul>
+            <button class="plan-select-btn" onclick="openCheckout('Lifetime','Permanent License','49.99','♾️','One-time payment · All future updates included')">Select Plan</button>
+            <div class="plan-bottom-line"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SETTINGS PAGE -->
+      <div id="settingsPage" style="display:none;">
+        <div class="settings-header">
+          <div class="settings-title">Settings</div>
+          <div class="settings-sub">Manage your account preferences and security</div>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="settings-section">
+          <div class="settings-section-header" id="profileHeader" onclick="toggleSettingsSection('profile')">
+            <div class="settings-section-left">
+              <div class="settings-section-icon">👤</div>
+              <div>
+                <div class="settings-section-name">Profile</div>
+                <div class="settings-section-desc">Change username and profile picture</div>
+              </div>
+            </div>
+            <div class="settings-chevron" id="profileChevron">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <div class="settings-section-body" id="profileBody">
+
+            <!-- Avatar row -->
+            <div class="settings-row" style="align-items:flex-start;gap:16px;flex-direction:column;">
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                <div class="settings-row-left">
+                  <div class="settings-row-label">Profile Picture</div>
+                  <div class="settings-row-hint">Upload an image or choose an emoji avatar</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div class="profile-preview" id="profilePreview"><span id="profilePreviewEmoji">🦁</span></div>
+                  <button class="settings-btn settings-btn-purple" onclick="document.getElementById('avatarUpload').click()">Upload</button>
+                  <input type="file" id="avatarUpload" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)" />
+                </div>
+              </div>
+              <!-- Emoji picker -->
+              <div class="emoji-picker-row">
+                <div class="emoji-pick-label">Quick pick:</div>
+                <div class="emoji-options">
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🦁')">🦁</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🐺')">🐺</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🦊')">🦊</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🐻')">🐻</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🐯')">🐯</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🦅')">🦅</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🐉')">🐉</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('👾')">👾</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🤖')">🤖</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('💀')">💀</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('🎭')">🎭</button>
+                  <button class="emoji-opt" onclick="setAvatarEmoji('⚡')">⚡</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Username row -->
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <div class="settings-row-label">Username</div>
+                <div class="settings-row-hint">Change your display name</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span class="settings-row-value" id="currentUsernameDisplay">user</span>
+                <button class="settings-btn settings-btn-purple" onclick="toggleUsernameForm()">Change</button>
+              </div>
+            </div>
+
+            <!-- Username change form -->
+            <div class="change-pass-form" id="usernameForm">
+              <div class="cpf-row">
+                <div class="cpf-label">New Username</div>
+                <input type="text" class="cpf-input" id="newUsernameInput" placeholder="At least 3 characters" />
+              </div>
+              <div class="cpf-msg" id="usernameMsg"></div>
+              <div class="cpf-actions">
+                <button class="cpf-save" onclick="saveUsername()">Save Username</button>
+                <button class="cpf-cancel" onclick="toggleUsernameForm()">Cancel</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Security Section -->
+        <div class="settings-section">
+          <div class="settings-section-header" id="securityHeader" onclick="toggleSettingsSection('security')">
+            <div class="settings-section-left">
+              <div class="settings-section-icon">🔐</div>
+              <div>
+                <div class="settings-section-name">Security</div>
+                <div class="settings-section-desc">Password, sessions, and account safety</div>
+              </div>
+            </div>
+            <div class="settings-chevron" id="securityChevron">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <div class="settings-section-body" id="securityBody">
+
+            <!-- Password row -->
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <div class="settings-row-label">Password</div>
+                <div class="settings-row-hint">Update your account password</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span class="settings-row-value">••••••••</span>
+                <button class="settings-btn settings-btn-purple" onclick="toggleChangePass()">Change</button>
+              </div>
+            </div>
+
+            <!-- Change password inline form -->
+            <div class="change-pass-form" id="changePassForm">
+              <div class="cpf-row">
+                <div class="cpf-label">Current Password</div>
+                <input type="password" class="cpf-input" id="cpfCurrent" placeholder="Enter current password" />
+              </div>
+              <div class="cpf-row">
+                <div class="cpf-label">New Password</div>
+                <input type="password" class="cpf-input" id="cpfNew" placeholder="At least 6 characters" />
+              </div>
+              <div class="cpf-row">
+                <div class="cpf-label">Confirm New Password</div>
+                <input type="password" class="cpf-input" id="cpfConfirm" placeholder="Repeat new password" />
+              </div>
+              <div class="cpf-msg" id="cpfMsg"></div>
+              <div class="cpf-actions">
+                <button class="cpf-save" onclick="savePassword()">Save Password</button>
+                <button class="cpf-cancel" onclick="toggleChangePass()">Cancel</button>
+              </div>
+            </div>
+
+            <!-- Sessions row -->
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <div class="settings-row-label">Sessions</div>
+                <div class="settings-row-hint">Sign out of all active sessions everywhere</div>
+              </div>
+              <button class="settings-btn settings-btn-orange" onclick="signOutEverywhere(this)">Sign Out Everywhere</button>
+            </div>
+
+            <!-- Delete account row -->
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <div class="settings-row-label">Delete Account</div>
+                <div class="settings-row-hint">Permanently remove your account and all data</div>
+              </div>
+              <button class="settings-btn settings-btn-red" onclick="confirmDeleteAccount()">Delete Account</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Status Section -->
+        <div class="settings-section">
+          <div class="settings-section-header" id="statusHeader" onclick="toggleSettingsSection('status')">
+            <div class="settings-section-left">
+              <div class="settings-section-icon">🟢</div>
+              <div>
+                <div class="settings-section-name">Status</div>
+                <div class="settings-section-desc">Set your visibility and presence</div>
+              </div>
+            </div>
+            <div class="settings-chevron" id="statusChevron">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <div class="settings-section-body" id="statusBody">
+            <div class="status-options">
+
+              <div class="status-option" onclick="setStatus('online')">
+                <div class="status-option-left">
+                  <div class="status-dot-indicator status-dot-online"></div>
+                  <div>
+                    <div class="status-option-name">Online</div>
+                    <div class="status-option-desc">You appear as active and available</div>
+                  </div>
+                </div>
+                <div class="status-radio checked" id="radio-online"></div>
+              </div>
+
+              <div class="status-option" onclick="setStatus('offline')">
+                <div class="status-option-left">
+                  <div class="status-dot-indicator status-dot-offline"></div>
+                  <div>
+                    <div class="status-option-name">Offline</div>
+                    <div class="status-option-desc">You appear as offline to others</div>
+                  </div>
+                </div>
+                <div class="status-radio" id="radio-offline"></div>
+              </div>
+
+              <div class="status-option" onclick="setStatus('dnd')">
+                <div class="status-option-left">
+                  <div class="status-dot-indicator status-dot-dnd"></div>
+                  <div>
+                    <div class="status-option-name">Do Not Disturb</div>
+                    <div class="status-option-desc">Mutes notifications, shows as busy</div>
+                  </div>
+                </div>
+                <div class="status-radio" id="radio-dnd"></div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Appearance Section -->
+        <div class="settings-section">
+          <div class="settings-section-header" id="appearanceHeader" onclick="toggleSettingsSection('appearance')">
+            <div class="settings-section-left">
+              <div class="settings-section-icon">🎨</div>
+              <div>
+                <div class="settings-section-name">Appearance</div>
+                <div class="settings-section-desc">Brightness, accent color, and themes</div>
+              </div>
+            </div>
+            <div class="settings-chevron" id="appearanceChevron">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <div class="settings-section-body" id="appearanceBody">
+
+            <!-- Brightness -->
+            <div class="appearance-block">
+              <div class="appearance-row-header">
+                <div class="appearance-row-left">
+                  <div class="appearance-row-icon">☀️</div>
+                  <div>
+                    <div class="appearance-row-title">Brightness</div>
+                    <div class="appearance-row-sub">Adjust background brightness</div>
+                  </div>
+                </div>
+                <span class="appearance-value" id="brightnessVal">36%</span>
+              </div>
+              <input type="range" class="brightness-slider" id="brightnessSlider"
+                     min="0" max="100" value="36"
+                     oninput="setBrightness(this.value)" />
+            </div>
+
+            <!-- Custom Color -->
+            <div class="appearance-block">
+              <div class="appearance-row-header">
+                <div class="appearance-row-left">
+                  <div class="appearance-row-icon">🖌️</div>
+                  <div>
+                    <div class="appearance-row-title">Custom Color</div>
+                    <div class="appearance-row-sub">Set your accent color</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="color-active-badge">Active</span>
+                  <div class="hex-input-row">
+                    <div class="hex-preview-box" id="hexPreviewBox" style="background:#8b5cf6;"></div>
+                    <input type="text" class="hex-input" id="hexInput" value="#8b5cf6" oninput="applyHex(this.value)" />
+                  </div>
+                </div>
+              </div>
+              <div class="color-swatches" id="colorSwatches">
+                <div class="color-swatch" style="background:#f97316;" onclick="applyAccent('#f97316',this)" title="Orange"></div>
+                <div class="color-swatch" style="background:#ef4444;" onclick="applyAccent('#ef4444',this)" title="Red"></div>
+                <div class="color-swatch" style="background:#ec4899;" onclick="applyAccent('#ec4899',this)" title="Pink"></div>
+                <div class="color-swatch active" style="background:#8b5cf6;" onclick="applyAccent('#8b5cf6',this)" title="Purple"></div>
+                <div class="color-swatch" style="background:#6366f1;" onclick="applyAccent('#6366f1',this)" title="Indigo"></div>
+                <div class="color-swatch" style="background:#3b82f6;" onclick="applyAccent('#3b82f6',this)" title="Blue"></div>
+                <div class="color-swatch" style="background:#06b6d4;" onclick="applyAccent('#06b6d4',this)" title="Cyan"></div>
+                <div class="color-swatch" style="background:#10b981;" onclick="applyAccent('#10b981',this)" title="Emerald"></div>
+                <div class="color-swatch" style="background:#84cc16;" onclick="applyAccent('#84cc16',this)" title="Lime"></div>
+                <div class="color-swatch" style="background:#eab308;" onclick="applyAccent('#eab308',this)" title="Yellow"></div>
+                <div class="color-swatch" style="background:#f59e0b;" onclick="applyAccent('#f59e0b',this)" title="Amber"></div>
+                <div class="color-swatch custom-swatch" onclick="document.getElementById('colorPickerInput').click()" title="Custom">+
+                  <input type="color" id="colorPickerInput" style="display:none;position:absolute;opacity:0;" onchange="applyAccent(this.value,null,true)" />
+                </div>
+              </div>
+              <div class="color-preview-bar">
+                <span class="color-preview-label">Preview</span>
+                <div class="preview-track"><div class="preview-track-fill" id="previewFill" style="background:#8b5cf6;"></div></div>
+                <button class="preview-btn" id="previewBtn" style="background:#8b5cf6;">Button</button>
+              </div>
+            </div>
+
+            <!-- Preset Themes -->
+            <div class="appearance-block">
+              <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:12px;letter-spacing:0.03em;text-transform:uppercase;">Preset Themes</div>
+              <div class="theme-presets" id="themePresets">
+
+                <div class="theme-preset active" onclick="applyTheme('ember',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#f97316;"></div>
+                  </div>
+                  <div class="theme-preset-name">Ember</div>
+                </div>
+
+                <div class="theme-preset" onclick="applyTheme('mauve',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#c084fc;"></div>
+                  </div>
+                  <div class="theme-preset-name">Mauve</div>
+                </div>
+
+                <div class="theme-preset" onclick="applyTheme('sapphire',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#38bdf8;"></div>
+                  </div>
+                  <div class="theme-preset-name">Sapphire</div>
+                </div>
+
+                <div class="theme-preset" onclick="applyTheme('peach',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#fb7185;"></div>
+                  </div>
+                  <div class="theme-preset-name">Peach</div>
+                </div>
+
+                <div class="theme-preset" onclick="applyTheme('green',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#4ade80;"></div>
+                  </div>
+                  <div class="theme-preset-name">Green</div>
+                </div>
+
+                <div class="theme-preset" onclick="applyTheme('flamingo',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#f472b6;"></div>
+                  </div>
+                  <div class="theme-preset-name">Flamingo</div>
+                </div>
+
+                <div class="theme-preset" onclick="applyTheme('lavender',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#a78bfa;"></div>
+                  </div>
+                  <div class="theme-preset-name">Lavender</div>
+                </div>
+
+                <div class="theme-preset" onclick="applyTheme('latte',this)">
+                  <div class="theme-preview">
+                    <div class="theme-preview-line"></div>
+                    <div class="theme-preview-line short"></div>
+                    <div class="theme-preview-accent" style="background:#e9d5a1;"></div>
+                  </div>
+                  <div class="theme-preset-name">Latte</div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ══════════ USER STORE ══════════ */
+  function getUsers() {
+    try { return JSON.parse(localStorage.getItem('vault_users') || '[]'); } catch { return []; }
+  }
+  function saveUsers(u) { localStorage.setItem('vault_users', JSON.stringify(u)); }
+
+  // seed default if empty
+  if (!getUsers().length) {
+    saveUsers([{ username: 'romeoxlover', password: 'vault2026', email: '' }]);
+  }
+
+  /* ══════════ TABS ══════════ */
+  function switchTab(t) {
+    ['login','signup'].forEach(k => {
+      document.getElementById('tab' + k.charAt(0).toUpperCase() + k.slice(1)).classList.toggle('active', k === t);
+      document.getElementById('panel' + k.charAt(0).toUpperCase() + k.slice(1)).classList.toggle('active', k === t);
+    });
+    clearMsg('loginErr'); clearMsg('regMsg');
+  }
+
+  /* ══════════ HELPERS ══════════ */
+  function toggleEye(id, btn) {
+    const el = document.getElementById(id);
+    const show = el.type === 'password';
+    el.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
+  }
+
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg ' + type + ' show';
+  }
+
+  function clearMsg(id) {
+    document.getElementById(id).classList.remove('show');
+  }
+
+  function shake() {
+    const c = document.getElementById('authCard');
+    c.classList.add('shake');
+    setTimeout(() => c.classList.remove('shake'), 500);
+  }
+
+  function setBtnLoading(id, yes, defaultText) {
+    const b = document.getElementById(id);
+    b.classList.toggle('loading', yes);
+    b.innerHTML = yes ? '<span class="spinner"></span>Please wait…' : defaultText;
+    b.style.background = '';
+  }
+
+  /* ══════════ STRENGTH ══════════ */
+  function checkStrength(v) {
+    let s = 0;
+    if (v.length >= 8) s++;
+    if (v.length >= 12) s++;
+    if (/[A-Z]/.test(v)) s++;
+    if (/[0-9]/.test(v)) s++;
+    if (/[^A-Za-z0-9]/.test(v)) s++;
+    const levels = [
+      { p:'0%',   c:'transparent', t:'Password strength' },
+      { p:'25%',  c:'#f87171',     t:'Weak' },
+      { p:'50%',  c:'#fb923c',     t:'Fair' },
+      { p:'75%',  c:'#facc15',     t:'Good' },
+      { p:'90%',  c:'#4ade80',     t:'Strong' },
+      { p:'100%', c:'#34d399',     t:'Very strong' },
+    ];
+    const lv = levels[Math.min(s, 5)];
+    const fill = document.getElementById('strengthFill');
+    const lbl  = document.getElementById('strengthLabel');
+    fill.style.width      = v.length ? lv.p : '0%';
+    fill.style.background = lv.c;
+    lbl.textContent       = lv.t;
+    lbl.style.color       = v.length ? lv.c : 'var(--text-muted)';
+  }
+
+  /* ══════════ ENTER KEY ══════════ */
+  document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('regUser').addEventListener('keydown', e => { if(e.key==='Enter') doSignup(); });
+  document.getElementById('regPass').addEventListener('keydown', e => { if(e.key==='Enter') doSignup(); });
+  document.getElementById('regConfirm').addEventListener('keydown', e => { if(e.key==='Enter') doSignup(); });
+
+  /* ══════════ LOGIN ══════════ */
+  function doLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    clearMsg('loginErr');
+
+    if (!user || !pass) { showMsg('loginErr', '⚠ Please fill in both fields', 'error'); return; }
+
+    setBtnLoading('loginBtn', true, 'Sign In');
+
+    setTimeout(() => {
+      const match = getUsers().find(u => u.username === user && u.password === pass);
+      if (match) {
+        const btn = document.getElementById('loginBtn');
+        btn.classList.remove('loading');
+        btn.innerHTML = '✓ Access Granted';
+        btn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+        setTimeout(() => goToDashboard(user), 700);
+      } else {
+        setBtnLoading('loginBtn', false, 'Sign In');
+        showMsg('loginErr', '⚠ Invalid username or password', 'error');
+        shake();
+      }
+    }, 1000);
+  }
+
+  /* ══════════ SIGN UP ══════════ */
+  function doSignup() {
+    const username = document.getElementById('regUser').value.trim();
+    const email    = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPass').value;
+    const confirm  = document.getElementById('regConfirm').value;
+    clearMsg('regMsg');
+
+    if (!username || !password || !confirm) { showMsg('regMsg', '⚠ Please fill in all required fields', 'error'); return; }
+    if (username.length < 3) { showMsg('regMsg', '⚠ Username must be at least 3 characters', 'error'); return; }
+    if (password.length < 6) { showMsg('regMsg', '⚠ Password must be at least 6 characters', 'error'); return; }
+    if (password !== confirm) { showMsg('regMsg', '⚠ Passwords do not match', 'error'); shake(); return; }
+
+    const users = getUsers();
+    if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+      showMsg('regMsg', '⚠ Username already taken — choose another', 'error'); shake(); return;
+    }
+
+    setBtnLoading('signupBtn', true, 'Create Account');
+
+    setTimeout(() => {
+      users.push({ username, password, email });
+      saveUsers(users);
+
+      const btn = document.getElementById('signupBtn');
+      btn.classList.remove('loading');
+      btn.innerHTML = '✓ Account Created!';
+      btn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+      showMsg('regMsg', '✓ Welcome to Vault! Redirecting…', 'success');
+
+      setTimeout(() => goToDashboard(username), 900);
+    }, 1000);
+  }
+
+  /* ══════════ GO TO DASHBOARD ══════════ */
+  function goToDashboard(username) {
+    document.getElementById('greetName').textContent = username;
+    document.getElementById('sidebarUsername').textContent = username;
+    document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+    const auth = document.getElementById('authPage');
+    auth.classList.add('hiding');
+    setTimeout(() => {
+      auth.style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      initDashboard();
+      startChatPoll();
+    }, 650);
+  }
+
+  /* ══════════ LOG OUT ══════════ */
+  function doLogout() {
+    // show confirm modal
+    const username = document.getElementById('sidebarUsername').textContent;
+    document.getElementById('modalUsername').textContent = username;
+    document.getElementById('logoutOverlay').classList.add('show');
+  }
+
+  function closeLogoutModal() {
+    document.getElementById('logoutOverlay').classList.remove('show');
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('logoutOverlay')) closeLogoutModal();
+  }
+
+  function confirmLogout() {
+    closeLogoutModal();
+    stopChatPoll();
+
+    const app  = document.getElementById('app');
+    const auth = document.getElementById('authPage');
+
+    app.style.transition = 'opacity 0.45s ease';
+    app.style.opacity = '0';
+
+    setTimeout(() => {
+      app.classList.remove('visible');
+      app.style.opacity = '';
+      app.style.transition = '';
+
+      ['loginUser','loginPass','regUser','regEmail','regPass','regConfirm'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      ['loginPass','regPass','regConfirm'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.type = 'password';
+      });
+      document.getElementById('strengthFill').style.width = '0%';
+      document.getElementById('strengthLabel').textContent = 'Password strength';
+      const lb = document.getElementById('loginBtn');
+      lb.innerHTML = 'Sign In'; lb.style.background = ''; lb.classList.remove('loading');
+      const sb = document.getElementById('signupBtn');
+      sb.innerHTML = 'Create Account'; sb.style.background = ''; sb.classList.remove('loading');
+      clearMsg('loginErr'); clearMsg('regMsg');
+      switchTab('login');
+
+      document.getElementById('chartCard').classList.remove('visible');
+      document.getElementById('skeleton').style.display = '';
+      document.getElementById('chartWrapper').style.display = 'none';
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('visible'));
+
+      auth.style.display = '';
+      auth.classList.remove('hiding');
+    }, 450);
+  }
+
+
+
+
+  /* ══════════ PROFILE ══════════ */
+  let currentAvatarData = null; // null = emoji mode, string = base64 image
+
+  function loadProfile() {
+    const username = document.getElementById('sidebarUsername').textContent;
+    const users = getUsers();
+    const user = users.find(u => u.username === username);
+    if (!user) return;
+
+    // Update username display in settings
+    const el = document.getElementById('currentUsernameDisplay');
+    if (el) el.textContent = username;
+
+    // Load saved avatar
+    if (user.avatarImg) {
+      currentAvatarData = user.avatarImg;
+      setAvatarImage(user.avatarImg);
+    } else if (user.avatarEmoji) {
+      setAvatarEmoji(user.avatarEmoji, true);
+    }
+  }
+
+  function setAvatarEmoji(emoji, silent) {
+    currentAvatarData = null;
+    // Update all avatar spots
+    const spots = ['sidebarAvatarEmoji','topbarAvatarEmoji','profilePreviewEmoji'];
+    spots.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = emoji; el.style.display = ''; }
+    });
+    // Remove any img tags
+    ['sidebarAvatar','topbarAvatar','profilePreview'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        const img = el.querySelector('img');
+        if (img) img.remove();
+      }
+    });
+    // Highlight selected emoji btn
+    document.querySelectorAll('.emoji-opt').forEach(b => {
+      b.classList.toggle('selected', b.textContent === emoji);
+    });
+    if (!silent) {
+      const username = document.getElementById('sidebarUsername').textContent;
+      const users = getUsers();
+      const user = users.find(u => u.username === username);
+      if (user) { user.avatarEmoji = emoji; delete user.avatarImg; saveUsers(users); }
+    }
+  }
+
+  function setAvatarImage(src) {
+    const placements = [
+      { wrap: 'sidebarAvatar',  emoji: 'sidebarAvatarEmoji'  },
+      { wrap: 'topbarAvatar',   emoji: 'topbarAvatarEmoji'   },
+      { wrap: 'profilePreview', emoji: 'profilePreviewEmoji' },
+    ];
+    placements.forEach(({ wrap, emoji }) => {
+      const wrapEl = document.getElementById(wrap);
+      const emojiEl = document.getElementById(emoji);
+      if (!wrapEl) return;
+      if (emojiEl) emojiEl.style.display = 'none';
+      let img = wrapEl.querySelector('img');
+      if (!img) { img = document.createElement('img'); wrapEl.appendChild(img); }
+      img.src = src;
+    });
+    document.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('selected'));
+  }
+
+  function handleAvatarUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const src = ev.target.result;
+      currentAvatarData = src;
+      setAvatarImage(src);
+      const username = document.getElementById('sidebarUsername').textContent;
+      const users = getUsers();
+      const user = users.find(u => u.username === username);
+      if (user) { user.avatarImg = src; delete user.avatarEmoji; saveUsers(users); }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function toggleUsernameForm() {
+    const form = document.getElementById('usernameForm');
+    const isOpen = form.classList.contains('open');
+    form.classList.toggle('open', !isOpen);
+    if (!isOpen) {
+      document.getElementById('newUsernameInput').value = '';
+      document.getElementById('usernameMsg').textContent = '';
+      document.getElementById('usernameMsg').className = 'cpf-msg';
+      setTimeout(() => document.getElementById('newUsernameInput').focus(), 50);
+    }
+  }
+
+  function saveUsername() {
+    const newName = document.getElementById('newUsernameInput').value.trim();
+    const msg = document.getElementById('usernameMsg');
+    const oldName = document.getElementById('sidebarUsername').textContent;
+    msg.className = 'cpf-msg'; msg.textContent = '';
+
+    if (!newName) { msg.textContent = 'Please enter a username.'; msg.classList.add('err'); return; }
+    if (newName.length < 3) { msg.textContent = 'Username must be at least 3 characters.'; msg.classList.add('err'); return; }
+    const users = getUsers();
+    if (users.find(u => u.username === newName && u.username !== oldName)) {
+      msg.textContent = 'Username already taken.'; msg.classList.add('err'); return;
+    }
+    const user = users.find(u => u.username === oldName);
+    if (!user) return;
+    user.username = newName;
+    saveUsers(users);
+
+    // Update all username displays
+    document.getElementById('sidebarUsername').textContent = newName;
+    document.getElementById('greetName').textContent = newName;
+    document.getElementById('currentUsernameDisplay').textContent = newName;
+    if (document.getElementById('modalUsername')) document.getElementById('modalUsername').textContent = newName;
+
+    msg.textContent = '✓ Username updated!'; msg.classList.add('ok');
+    setTimeout(() => toggleUsernameForm(), 1400);
+  }
+
+
+
+  /* ══════════ APPEARANCE ══════════ */
+  const themeColors = {
+    ember:    '#f97316',
+    mauve:    '#c084fc',
+    sapphire: '#38bdf8',
+    peach:    '#fb7185',
+    green:    '#4ade80',
+    flamingo: '#f472b6',
+    lavender: '#a78bfa',
+    latte:    '#e9d5a1',
+  };
+
+  function setBrightness(val) {
+    document.getElementById('brightnessVal').textContent = val + '%';
+    const pct = val / 100;
+    document.body.style.filter = pct < 0.5
+      ? `brightness(${0.6 + pct * 0.8})`
+      : `brightness(${1 + (pct - 0.5) * 0.6})`;
+    // update slider gradient
+    const slider = document.getElementById('brightnessSlider');
+    slider.style.background = `linear-gradient(to right, var(--purple) 0%, var(--purple) ${val}%, rgba(255,255,255,0.12) ${val}%)`;
+  }
+
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return { r, g, b };
+  }
+
+  function lighten(hex, amount) {
+    const { r, g, b } = hexToRgb(hex);
+    const lr = Math.min(255, r + Math.round((255-r)*amount));
+    const lg = Math.min(255, g + Math.round((255-g)*amount));
+    const lb = Math.min(255, b + Math.round((255-b)*amount));
+    return '#' + [lr,lg,lb].map(v => Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');
+  }
+
+  function applyAccent(hex, swatchEl, fromPicker) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+
+    const light = lighten(hex, 0.22);
+    const { r, g, b } = hexToRgb(hex);
+
+    const root = document.documentElement;
+    root.style.setProperty('--purple',        hex);
+    root.style.setProperty('--purple-light',  light);
+    root.style.setProperty('--purple-dim',    `rgba(${r},${g},${b},0.15)`);
+    root.style.setProperty('--border-accent', `rgba(${r},${g},${b},0.35)`);
+
+    // Inject a <style> block that overrides all hardcoded accent usages
+    let styleTag = document.getElementById('accentOverride');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'accentOverride';
+      document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = `
+      /* active nav */
+      .nav-item.active { background: rgba(${r},${g},${b},0.15) !important; border-color: rgba(${r},${g},${b},0.35) !important; color: ${light} !important; }
+      .nav-dot { background: ${hex} !important; box-shadow: 0 0 8px rgba(${r},${g},${b},0.9) !important; }
+
+      /* auth card glow */
+      .auth-card::before { background: linear-gradient(135deg, rgba(${r},${g},${b},0.28), transparent 55%) !important; }
+      .auth-logo-icon, .sidebar-avatar, .avatar { background: linear-gradient(135deg, ${hex}, #3b82f6) !important; }
+
+      /* auth button */
+      .auth-btn { background: linear-gradient(135deg, ${hex}, ${lighten(hex,-0.1)}) !important; box-shadow: 0 8px 24px rgba(${r},${g},${b},0.35) !important; }
+
+      /* tab active */
+      .tab-btn.active { background: rgba(${r},${g},${b},0.18) !important; color: ${light} !important; }
+
+      /* inputs focus */
+      input:focus { border-color: rgba(${r},${g},${b},0.5) !important; background: rgba(${r},${g},${b},0.06) !important; box-shadow: 0 0 0 3px rgba(${r},${g},${b},0.12) !important; }
+
+      /* cards hover */
+      .card:hover { border-color: rgba(${r},${g},${b},0.35) !important; }
+      .card-bottom-line { background: linear-gradient(90deg, transparent, ${hex}, transparent) !important; }
+
+      /* chart badge */
+      .chart-badge { background: rgba(${r},${g},${b},0.1) !important; border-color: rgba(${r},${g},${b},0.22) !important; color: ${light} !important; }
+
+      /* chart tooltip value */
+      .ct-value { color: ${light} !important; }
+
+      /* sidebar avatar box-shadow */
+      .sidebar-avatar { box-shadow: 0 2px 10px rgba(${r},${g},${b},0.3) !important; }
+      .avatar { box-shadow: 0 4px 20px rgba(${r},${g},${b},0.35) !important; }
+
+      /* settings btn purple */
+      .settings-btn-purple { background: rgba(${r},${g},${b},0.15) !important; border-color: rgba(${r},${g},${b},0.3) !important; color: ${light} !important; }
+      .settings-btn-purple:hover { background: rgba(${r},${g},${b},0.25) !important; }
+
+      /* settings chevron active */
+      .status-radio.checked { border-color: ${hex} !important; background: rgba(${r},${g},${b},0.15) !important; }
+      .status-radio.checked::after { background: ${hex} !important; }
+
+      /* range btn active */
+      .range-btn.active { background: rgba(${r},${g},${b},0.2) !important; color: ${light} !important; border-color: rgba(${r},${g},${b},0.3) !important; }
+
+      /* cpf save btn */
+      .cpf-save, .cpmodal-save { background: linear-gradient(135deg, ${hex}, ${lighten(hex,-0.1)}) !important; box-shadow: 0 4px 14px rgba(${r},${g},${b},0.3) !important; }
+
+      /* greeting name */
+      .greeting span { color: ${light} !important; }
+
+      /* logout modal sub span */
+      .logout-modal-sub span { color: ${light} !important; }
+
+      /* body glow */
+      body::after {
+        background:
+          radial-gradient(ellipse 60% 50% at 15% 15%, rgba(${r},${g},${b},0.08) 0%, transparent 70%),
+          radial-gradient(ellipse 50% 40% at 85% 85%, rgba(59,130,246,0.05) 0%, transparent 70%),
+          radial-gradient(ellipse 40% 30% at 50% 50%, rgba(${r},${g},${b},0.03) 0%, transparent 70%) !important;
+      }
+
+      /* logo name */
+      .logo-name { color: ${light} !important; }
+
+      /* settings section icon bg */
+      .settings-section-icon { background: rgba(${r},${g},${b},0.1) !important; border-color: rgba(${r},${g},${b},0.2) !important; }
+
+      /* color active badge */
+      .color-active-badge { background: rgba(${r},${g},${b},0.15) !important; border-color: rgba(${r},${g},${b},0.3) !important; color: ${light} !important; }
+
+      /* emoji opt hover/selected */
+      .emoji-opt:hover, .emoji-opt.selected { background: rgba(${r},${g},${b},0.15) !important; border-color: rgba(${r},${g},${b},0.3) !important; }
+      .emoji-opt.selected { box-shadow: 0 0 10px rgba(${r},${g},${b},0.25) !important; }
+
+      /* brightness slider */
+      .brightness-slider { background: linear-gradient(to right, ${hex} 0%, ${hex} var(--bpct, 36%), rgba(255,255,255,0.12) var(--bpct, 36%)) !important; }
+      .brightness-slider::-webkit-slider-thumb { border-color: ${hex} !important; box-shadow: 0 2px 8px rgba(${r},${g},${b},0.4) !important; }
+
+      /* theme preset active */
+      .theme-preset.active { border-color: ${hex} !important; background: rgba(${r},${g},${b},0.08) !important; }
+      .theme-preset.active .theme-preset-name { color: ${light} !important; }
+
+      /* scrollbar */
+      #content { scrollbar-color: rgba(${r},${g},${b},0.25) transparent !important; }
+      #content::-webkit-scrollbar-thumb { background: rgba(${r},${g},${b},0.25) !important; }
+    `;
+
+    // hex display + preview
+    document.getElementById('hexInput').value = hex;
+    document.getElementById('hexPreviewBox').style.background = hex;
+    document.getElementById('previewFill').style.background = hex;
+    document.getElementById('previewBtn').style.background = hex;
+
+    // swatch active
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    if (swatchEl) swatchEl.classList.add('active');
+  }
+
+  function applyHex(val) {
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) applyAccent(val, null);
+    document.getElementById('hexPreviewBox').style.background = /^#[0-9a-fA-F]{6}$/.test(val) ? val : '';
+  }
+
+  function applyTheme(name, el) {
+    const color = themeColors[name];
+    if (!color) return;
+
+    // update preset active state
+    document.querySelectorAll('.theme-preset').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+
+    // apply color
+    applyAccent(color, null);
+
+    // find matching swatch if exists
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      const swatchColor = s.style.background.replace(/\s/g,'').toLowerCase();
+      const target = color.toLowerCase();
+      if (swatchColor === target || s.getAttribute('onclick') && s.getAttribute('onclick').includes(target)) {
+        s.classList.add('active');
+      }
+    });
+  }
+
+  /* ══════════ STATUS ══════════ */
+  let currentStatus = 'online';
+
+  function setStatus(status) {
+    currentStatus = status;
+
+    // Update radios
+    ['online','offline','dnd'].forEach(s => {
+      const r = document.getElementById('radio-' + s);
+      if (r) r.classList.toggle('checked', s === status);
+    });
+
+    // Update topbar badge
+    const badge = document.querySelector('.status-badge');
+    const dot   = document.querySelector('.status-badge .status-dot');
+    if (!badge || !dot) return;
+
+    badge.classList.remove('offline','dnd');
+    dot.classList.remove('offline','dnd');
+
+    if (status === 'online') {
+      badge.innerHTML = '<div class="status-dot"></div>Online';
+      showStatusToast('🔔 Notifications enabled', 'green');
+    } else if (status === 'offline') {
+      badge.classList.add('offline');
+      dot.classList.add('offline');
+      badge.innerHTML = '<div class="status-dot offline"></div>Offline';
+      showStatusToast('🔕 Notifications off (Offline)', 'muted');
+    } else if (status === 'dnd') {
+      badge.classList.add('dnd');
+      badge.innerHTML = '<div class="status-dot dnd"></div>Do Not Disturb';
+      showStatusToast('🚫 Do Not Disturb — sounds muted', 'red');
+    }
+  }
+
+  /* ══════════ STATUS TOAST ══════════ */
+  let _toastTimer = null;
+  function showStatusToast(msg, type) {
+    let toast = document.getElementById('statusToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'statusToast';
+      toast.style.cssText = `
+        position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
+        background:rgba(10,8,22,0.97); border:1px solid rgba(255,255,255,0.1);
+        border-radius:12px; padding:10px 20px; font-size:13px; font-weight:600;
+        font-family:'Inter',sans-serif; color:#fff; z-index:9999;
+        backdrop-filter:blur(20px); box-shadow:0 8px 32px rgba(0,0,0,0.5);
+        opacity:0; transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1); pointer-events:none;
+        white-space:nowrap;
+      `;
+      document.body.appendChild(toast);
+    }
+    if (type === 'green') toast.style.borderColor = 'rgba(74,222,128,0.3)';
+    else if (type === 'red') toast.style.borderColor = 'rgba(248,113,113,0.3)';
+    else toast.style.borderColor = 'rgba(255,255,255,0.1)';
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(10px)';
+    }, 2500);
+  }
+
+  /* ══════════ SETTINGS ══════════ */
+  function showSettings() {
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.remove('active','purchase-active','settings-active');
+    });
+    const nav = document.querySelector('[data-nav="Settings"]');
+    if(nav) { nav.classList.add('active'); }
+    const uEl = document.getElementById('currentUsernameDisplay');
+    if(uEl) uEl.textContent = document.getElementById('sidebarUsername').textContent;
+
+    document.getElementById('dashboardPage').style.display = 'none';
+    if(document.getElementById('settingsPage')) { document.getElementById('settingsPage').style.display='none'; document.getElementById('settingsPage').classList.remove('active'); }
+    document.getElementById('purchasePage').style.display = 'none';
+    document.getElementById('purchasePage').classList.remove('active');
+    document.getElementById('chatPage').style.display = 'none';
+    document.getElementById('chatPage').classList.remove('active');
+    document.getElementById('settingsPage').style.display = 'block';
+    document.getElementById('settingsPage').classList.add('active');
+    document.getElementById('content').scrollTop = 0;
+  }
+
+  function toggleSettingsSection(name) {
+    const body = document.getElementById(name + 'Body');
+    const chevron = document.getElementById(name + 'Chevron');
+    const header = document.getElementById(name + 'Header');
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    chevron.classList.toggle('open', !isOpen);
+    header.classList.toggle('open', !isOpen);
+  }
+
+  function toggleChangePass() {
+    const overlay = document.getElementById('changePassOverlay');
+    document.getElementById('cpCurrent').value = '';
+    document.getElementById('cpNew').value = '';
+    document.getElementById('cpConfirm').value = '';
+    const msg = document.getElementById('cpMsg');
+    msg.textContent = ''; msg.className = 'cpmodal-msg';
+    overlay.classList.add('show');
+    setTimeout(() => document.getElementById('cpCurrent').focus(), 100);
+  }
+
+  function closeChangePass() {
+    document.getElementById('changePassOverlay').classList.remove('show');
+  }
+
+  function handleCPOverlay(e) {
+    if (e.target === document.getElementById('changePassOverlay')) closeChangePass();
+  }
+
+  function savePasswordModal() {
+    const current = document.getElementById('cpCurrent').value.trim();
+    const newPass  = document.getElementById('cpNew').value.trim();
+    const confirm  = document.getElementById('cpConfirm').value.trim();
+    const msg      = document.getElementById('cpMsg');
+    const username = document.getElementById('sidebarUsername').textContent;
+
+    msg.className = 'cpmodal-msg'; msg.textContent = '';
+
+    if (!current || !newPass || !confirm) {
+      msg.textContent = 'Please fill in all fields.'; msg.classList.add('err'); return;
+    }
+    if (newPass.length < 6) {
+      msg.textContent = 'New password must be at least 6 characters.'; msg.classList.add('err'); return;
+    }
+    if (newPass !== confirm) {
+      msg.textContent = 'Passwords do not match.'; msg.classList.add('err'); return;
+    }
+    const users = getUsers();
+    const user = users.find(u => u.username === username);
+    if (!user || user.password !== current) {
+      msg.textContent = 'Current password is incorrect.'; msg.classList.add('err'); return;
+    }
+    user.password = newPass;
+    saveUsers(users);
+    msg.textContent = '✓ Password updated!'; msg.classList.add('ok');
+    setTimeout(() => closeChangePass(), 1400);
+  }
+
+  function savePassword() {
+    const current = document.getElementById('cpfCurrent').value.trim();
+    const newPass  = document.getElementById('cpfNew').value.trim();
+    const confirm  = document.getElementById('cpfConfirm').value.trim();
+    const msg      = document.getElementById('cpfMsg');
+    const username = document.getElementById('sidebarUsername').textContent;
+
+    msg.className = 'cpf-msg';
+    msg.textContent = '';
+
+    if (!current || !newPass || !confirm) {
+      msg.textContent = 'Please fill in all fields.';
+      msg.classList.add('err'); return;
+    }
+    if (newPass.length < 6) {
+      msg.textContent = 'New password must be at least 6 characters.';
+      msg.classList.add('err'); return;
+    }
+    if (newPass !== confirm) {
+      msg.textContent = 'Passwords do not match.';
+      msg.classList.add('err'); return;
+    }
+
+    const users = getUsers();
+    const user = users.find(u => u.username === username);
+    if (!user || user.password !== current) {
+      msg.textContent = 'Current password is incorrect.';
+      msg.classList.add('err'); return;
+    }
+
+    user.password = newPass;
+    saveUsers(users);
+    msg.textContent = '✓ Password updated successfully!';
+    msg.classList.add('ok');
+    setTimeout(() => toggleChangePass(), 1800);
+  }
+
+  function signOutEverywhere(btn) {
+    btn.textContent = '✓ Done';
+    btn.style.pointerEvents = 'none';
+    setTimeout(() => {
+      btn.textContent = 'Sign Out Everywhere';
+      btn.style.pointerEvents = '';
+      confirmLogout();
+    }, 900);
+  }
+
+  function confirmDeleteAccount() {
+    const username = document.getElementById('sidebarUsername').textContent;
+    document.getElementById('deleteUsername').textContent = '"' + username + '"';
+    document.getElementById('deleteConfirmInput').value = '';
+    document.getElementById('deleteConfirmInput').placeholder = username;
+    document.getElementById('deleteMsg').textContent = '';
+    const btn = document.getElementById('deleteConfirmBtn');
+    btn.disabled = true; btn.style.opacity = '0.4'; btn.style.cursor = 'not-allowed';
+    document.getElementById('deleteOverlay').classList.add('show');
+    setTimeout(() => document.getElementById('deleteConfirmInput').focus(), 100);
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('deleteOverlay').classList.remove('show');
+  }
+
+  function handleDeleteOverlay(e) {
+    if (e.target === document.getElementById('deleteOverlay')) closeDeleteModal();
+  }
+
+  function checkDeleteConfirm() {
+    const username = document.getElementById('sidebarUsername').textContent;
+    const val = document.getElementById('deleteConfirmInput').value;
+    const btn = document.getElementById('deleteConfirmBtn');
+    const match = val === username;
+    btn.disabled = !match;
+    btn.style.opacity = match ? '1' : '0.4';
+    btn.style.cursor = match ? 'pointer' : 'not-allowed';
+  }
+
+  function executeDeleteAccount() {
+    const username = document.getElementById('sidebarUsername').textContent;
+    const val = document.getElementById('deleteConfirmInput').value;
+    if (val !== username) return;
+    const users = getUsers().filter(u => u.username !== username);
+    saveUsers(users);
+    closeDeleteModal();
+    setTimeout(() => confirmLogout(), 200);
+  }
+
+
+  /* ══════════ PURCHASE / CHECKOUT ══════════ */
+  const LTC_ADDRESS = 'LTC1qa3k5h9m2nrz8pw4c7g6j0xt1yqvfde8s9u2k';
+
+  function showPurchase() {
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.remove('active');
+      n.classList.remove('purchase-active');
+    });
+    const purchaseNav = document.querySelector('[data-nav="Purchase"]');
+    purchaseNav.classList.add('purchase-active');
+
+    document.getElementById('dashboardPage').style.display = 'none';
+    document.getElementById('settingsPage').style.display = 'none';
+    document.getElementById('settingsPage').classList.remove('active');
+    document.getElementById('chatPage').style.display = 'none';
+    document.getElementById('chatPage').classList.remove('active');
+    document.getElementById('purchasePage').classList.add('active');
+    document.getElementById('purchasePage').style.display = 'block';
+
+    // scroll to absolute top
+    const content = document.getElementById('content');
+    content.scrollTop = 0;
+  }
+
+  function showDashboard() {
+    document.getElementById('purchasePage').classList.remove('active');
+    document.getElementById('purchasePage').style.display = 'none';
+    document.getElementById('settingsPage').classList.remove('active');
+    document.getElementById('settingsPage').style.display = 'none';
+    document.getElementById('chatPage').classList.remove('active');
+    document.getElementById('chatPage').style.display = 'none';
+    document.getElementById('dashboardPage').style.display = 'block';
+  }
+
+  /* ══════════ CHAT ══════════ */
+  function getChatMessages() {
+    try { return JSON.parse(localStorage.getItem('vault_chat') || '[]'); } catch { return []; }
+  }
+  function saveChatMessages(msgs) { localStorage.setItem('vault_chat', JSON.stringify(msgs)); }
+
+  function showChat() {
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.remove('active');
+      n.classList.remove('purchase-active');
+    });
+    document.querySelector('[data-nav="Chat"]').classList.add('active');
+    document.getElementById('dashboardPage').style.display = 'none';
+    document.getElementById('settingsPage').style.display = 'none';
+    document.getElementById('settingsPage').classList.remove('active');
+    document.getElementById('purchasePage').style.display = 'none';
+    document.getElementById('purchasePage').classList.remove('active');
+    document.getElementById('chatPage').style.display = 'flex';
+    document.getElementById('chatPage').classList.add('active');
+    document.getElementById('chatUnreadDot').style.display = 'none';
+    renderChatMessages();
+    setTimeout(() => {
+      const msgs = document.getElementById('chatMessages');
+      msgs.scrollTop = msgs.scrollHeight;
+      document.getElementById('chatInput').focus();
+    }, 50);
+  }
+
+  function getAvatarEmojiForUser(username) {
+    try {
+      const users = getUsers();
+      const u = users.find(x => x.username === username);
+      return (u && u.avatarEmoji) ? u.avatarEmoji : '🦁';
+    } catch { return '🦁'; }
+  }
+
+  function renderChatMessages() {
+    const msgs = getChatMessages();
+    const container = document.getElementById('chatMessages');
+    const currentUser = document.getElementById('sidebarUsername').textContent;
+    const empty = document.getElementById('chatEmpty');
+
+    if (!msgs.length) {
+      empty.style.display = 'flex';
+      return;
+    }
+    empty.style.display = 'none';
+
+    // keep empty sentinel, rebuild rest
+    const toRemove = container.querySelectorAll('.chat-msg, .chat-day-divider');
+    toRemove.forEach(el => el.remove());
+
+    let lastDay = null;
+    msgs.forEach((msg, i) => {
+      const msgDate = new Date(msg.ts);
+      const dayKey = msgDate.toDateString();
+
+      if (dayKey !== lastDay) {
+        lastDay = dayKey;
+        const now = new Date();
+        let label;
+        if (msgDate.toDateString() === now.toDateString()) label = 'Today';
+        else {
+          const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+          if (msgDate.toDateString() === yesterday.toDateString()) label = 'Yesterday';
+          else label = msgDate.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+        }
+        const div = document.createElement('div');
+        div.className = 'chat-day-divider';
+        div.innerHTML = `<span class="chat-day-label">${label}</span>`;
+        container.appendChild(div);
+      }
+
+      const isMine = msg.user === currentUser;
+      const prevMsg = msgs[i - 1];
+      const isGrouped = prevMsg && prevMsg.user === msg.user && (msg.ts - prevMsg.ts < 60000) && new Date(prevMsg.ts).toDateString() === dayKey;
+
+      const timeStr = msgDate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+      const emoji = getAvatarEmojiForUser(msg.user);
+
+      const el = document.createElement('div');
+      el.className = 'chat-msg' + (isMine ? ' mine' : '') + (isGrouped ? ' grouped' : '');
+      el.innerHTML = `
+        <div class="chat-msg-avatar">${emoji}</div>
+        <div class="chat-msg-body">
+          <div class="chat-msg-header">
+            <span class="chat-msg-name ${isMine ? 'me-name' : ''}">${escapeHtml(msg.user)}</span>
+            <span class="chat-msg-time">${timeStr}</span>
+          </div>
+          <div class="chat-msg-bubble">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
+        </div>`;
+      container.appendChild(el);
+    });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const currentUser = document.getElementById('sidebarUsername').textContent;
+    const msgs = getChatMessages();
+    msgs.push({ user: currentUser, text, ts: Date.now() });
+    saveChatMessages(msgs);
+
+    input.value = '';
+    input.style.height = 'auto';
+
+    const empty = document.getElementById('chatEmpty');
+    empty.style.display = 'none';
+
+    const container = document.getElementById('chatMessages');
+    const allMsgs = getChatMessages();
+    const i = allMsgs.length - 1;
+    const msg = allMsgs[i];
+    const isMine = true;
+    const prevMsg = allMsgs[i - 1];
+    const msgDate = new Date(msg.ts);
+    const dayKey = msgDate.toDateString();
+    const isGrouped = prevMsg && prevMsg.user === msg.user && (msg.ts - prevMsg.ts < 60000) && new Date(prevMsg.ts).toDateString() === dayKey;
+    const timeStr = msgDate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    const emoji = getAvatarEmojiForUser(msg.user);
+
+    // Day divider if needed
+    const existingDividers = container.querySelectorAll('.chat-day-divider');
+    const lastDivider = existingDividers[existingDividers.length - 1];
+    const lastDividerLabel = lastDivider ? lastDivider.querySelector('.chat-day-label').textContent : null;
+    const todayLabel = 'Today';
+    if (!lastDivider || lastDividerLabel !== todayLabel) {
+      const div = document.createElement('div');
+      div.className = 'chat-day-divider';
+      div.innerHTML = `<span class="chat-day-label">Today</span>`;
+      container.appendChild(div);
+    }
+
+    const el = document.createElement('div');
+    el.className = 'chat-msg mine' + (isGrouped ? ' grouped' : '');
+    el.innerHTML = `
+      <div class="chat-msg-avatar">${emoji}</div>
+      <div class="chat-msg-body">
+        <div class="chat-msg-header">
+          <span class="chat-msg-name me-name">${escapeHtml(msg.user)}</span>
+          <span class="chat-msg-time">${timeStr}</span>
+        </div>
+        <div class="chat-msg-bubble">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
+      </div>`;
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+
+    // Update last seen so we don't notify for our own message
+    _chatLastSeen = allMsgs.length;
+  }
+
+  /* ══════════ CHAT NOTIFICATIONS ══════════ */
+  let _chatAudioCtx = null;
+  let _chatLastSeen = 0;
+  let _chatPollInterval = null;
+
+  function getChatAudioCtx() {
+    if (!_chatAudioCtx) {
+      _chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return _chatAudioCtx;
+  }
+
+  function playChatNotificationSound() {
+    try {
+      const ctx = getChatAudioCtx();
+      // Soft "pop" notification: two short tones
+      const times = [0, 0.12];
+      const freqs = [880, 1100];
+      times.forEach((t, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freqs[i], ctx.currentTime + t);
+        gain.gain.setValueAtTime(0, ctx.currentTime + t);
+        gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.18);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.2);
+      });
+    } catch(e) {}
+  }
+
+  function startChatPoll() {
+    if (_chatPollInterval) return;
+    _chatLastSeen = getChatMessages().length;
+    _chatPollInterval = setInterval(() => {
+      const msgs = getChatMessages();
+      if (msgs.length > _chatLastSeen) {
+        const newMsgs = msgs.slice(_chatLastSeen);
+        const currentUser = document.getElementById('sidebarUsername').textContent;
+        const hasOtherMsg = newMsgs.some(m => m.user !== currentUser);
+        const chatPage = document.getElementById('chatPage');
+        const isChatOpen = chatPage.classList.contains('active');
+
+        // If chat is open, render the new messages live
+        if (isChatOpen) {
+          const container = document.getElementById('chatMessages');
+          newMsgs.forEach((msg, idx) => {
+            const globalIdx = _chatLastSeen + idx;
+            const prevMsg = msgs[globalIdx - 1];
+            const msgDate = new Date(msg.ts);
+            const dayKey = msgDate.toDateString();
+            const isGrouped = prevMsg && prevMsg.user === msg.user && (msg.ts - prevMsg.ts < 60000) && new Date(prevMsg.ts).toDateString() === dayKey;
+            const isMine = msg.user === currentUser;
+            const timeStr = msgDate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+            const emoji = getAvatarEmojiForUser(msg.user);
+
+            // Day divider if needed
+            const dividers = container.querySelectorAll('.chat-day-divider');
+            const lastDiv = dividers[dividers.length - 1];
+            const lastDivLabel = lastDiv ? lastDiv.querySelector('.chat-day-label').textContent : null;
+            const todayLabel = msgDate.toDateString() === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+            if (!lastDiv || lastDivLabel !== todayLabel) {
+              const d = document.createElement('div');
+              d.className = 'chat-day-divider';
+              d.innerHTML = `<span class="chat-day-label">${todayLabel}</span>`;
+              container.appendChild(d);
+            }
+
+            // Hide empty state
+            document.getElementById('chatEmpty').style.display = 'none';
+
+            const el = document.createElement('div');
+            el.className = 'chat-msg' + (isMine ? ' mine' : '') + (isGrouped ? ' grouped' : '');
+            el.innerHTML = `
+              <div class="chat-msg-avatar">${emoji}</div>
+              <div class="chat-msg-body">
+                <div class="chat-msg-header">
+                  <span class="chat-msg-name ${isMine ? 'me-name' : ''}">${escapeHtml(msg.user)}</span>
+                  <span class="chat-msg-time">${timeStr}</span>
+                </div>
+                <div class="chat-msg-bubble">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
+              </div>`;
+            container.appendChild(el);
+          });
+          container.scrollTop = container.scrollHeight;
+        }
+
+        // Sound + unread dot for messages from others
+        if (hasOtherMsg && currentStatus === 'online') {
+          playChatNotificationSound();
+          if (!isChatOpen) {
+            document.getElementById('chatUnreadDot').style.display = 'block';
+          }
+        }
+
+        _chatLastSeen = msgs.length;
+      }
+    }, 1000);
+  }
+
+  function stopChatPoll() {
+    if (_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval = null; }
+  }
+
+  function chatKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  }
+
+  function autoResizeChat(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function updateChatOnlineCount() {
+    const users = getUsers();
+    document.getElementById('chatOnlineCount').textContent = users.length + ' online';
+  }
+
+  /* ══════════ LICENSE ══════════ */
+  const LICENSE_KEYS = {
+    'taresmrad': { plan: 'Starter',  label: 'Starter Plan',  days: 30  },
+    'njegzi':    { plan: 'Pro',      label: 'Pro Plan',      days: 60  },
+    'luka':      { plan: 'Lifetime', label: 'Lifetime Plan', days: 36500 }
+  };
+
+  function getLicenseData() {
+    try {
+      const u = document.getElementById('sidebarUsername').textContent;
+      return JSON.parse(localStorage.getItem('vault_license_' + u) || 'null');
+    } catch { return null; }
+  }
+  function saveLicenseData(data) {
+    const u = document.getElementById('sidebarUsername').textContent;
+    if (data) localStorage.setItem('vault_license_' + u, JSON.stringify(data));
+    else localStorage.removeItem('vault_license_' + u);
+  }
+
+  function getDaysRemaining(data) {
+    if (!data || !data.activatedAt) return 0;
+    const plan = LICENSE_KEYS[data.key];
+    if (!plan) return 0;
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const elapsed = Math.floor((Date.now() - data.activatedAt) / msPerDay);
+    return Math.max(0, plan.days - elapsed);
+  }
+
+  function refreshLicenseExpiryRow() {
+    const row  = document.getElementById('licenseExpiryRow');
+    const text = document.getElementById('licenseExpiryText');
+    if (!row || !text) return;
+    const data = getLicenseData();
+    if (!data) { row.style.display = 'none'; return; }
+    const days = getDaysRemaining(data);
+    row.style.display = 'flex';
+    if (data.plan === 'Lifetime') {
+      text.textContent = '♾ Lifetime · active';
+    } else {
+      text.textContent = days + (days === 1 ? ' day' : ' days') + ' remaining';
+    }
+  }
+
+  function openLicenseModal() {
+    const existing = getLicenseData();
+    const activeCard  = document.getElementById('licenseActiveCard');
+    const inputSec    = document.getElementById('licenseInputSection');
+    const deactivBtn  = document.getElementById('licenseDeactivateBtn');
+    const msg         = document.getElementById('licenseMsg');
+    msg.className = 'license-msg'; msg.textContent = '';
+
+    if (existing) {
+      activeCard.classList.add('show');
+      inputSec.style.display = 'none';
+      deactivBtn.style.display = 'block';
+      const days = getDaysRemaining(existing);
+      const daysLabel = existing.plan === 'Lifetime' ? '♾ Lifetime' : days + (days === 1 ? ' day' : ' days') + ' remaining';
+      document.getElementById('licenseActivePlanName').textContent = existing.label + ' — Activated';
+      document.getElementById('licenseActiveKey').textContent = existing.key + ' · ' + daysLabel;
+    } else {
+      activeCard.classList.remove('show');
+      inputSec.style.display = 'block';
+      deactivBtn.style.display = 'none';
+      document.getElementById('licenseKeyInput').value = '';
+    }
+
+    document.getElementById('licenseOverlay').classList.add('show');
+    if (!existing) setTimeout(() => document.getElementById('licenseKeyInput').focus(), 100);
+    refreshLicenseNavDot();
+  }
+
+  function closeLicenseModal() {
+    document.getElementById('licenseOverlay').classList.remove('show');
+  }
+
+  function handleLicenseOverlay(e) {
+    if (e.target === document.getElementById('licenseOverlay')) closeLicenseModal();
+  }
+
+  function activateLicense() {
+    const raw = document.getElementById('licenseKeyInput').value.trim().toLowerCase();
+    const msgEl = document.getElementById('licenseMsg');
+    msgEl.className = 'license-msg'; msgEl.textContent = '';
+
+    if (!raw) {
+      msgEl.textContent = '⚠ Please enter a license key';
+      msgEl.className = 'license-msg error show'; return;
+    }
+
+    const match = LICENSE_KEYS[raw];
+    if (!match) {
+      msgEl.textContent = '✕ Invalid license key — please try again';
+      msgEl.className = 'license-msg error show';
+      document.getElementById('licenseKeyInput').classList.add('shake');
+      setTimeout(() => document.getElementById('licenseKeyInput').classList.remove('shake'), 500);
+      return;
+    }
+
+    const data = { key: raw, plan: match.plan, label: match.label, activatedAt: Date.now() };
+    saveLicenseData(data);
+
+    msgEl.textContent = '✓ ' + match.label + ' activated!';
+    msgEl.className = 'license-msg success show';
+
+    setTimeout(() => {
+      const activeCard = document.getElementById('licenseActiveCard');
+      const inputSec   = document.getElementById('licenseInputSection');
+      const deactivBtn = document.getElementById('licenseDeactivateBtn');
+      const days = getDaysRemaining(data);
+      const daysLabel = match.plan === 'Lifetime' ? '♾ Lifetime' : days + ' days remaining';
+
+      document.getElementById('licenseActivePlanName').textContent = match.label + ' — Activated';
+      document.getElementById('licenseActiveKey').textContent = raw + ' · ' + daysLabel;
+      activeCard.classList.add('show');
+      inputSec.style.display = 'none';
+      deactivBtn.style.display = 'block';
+      msgEl.className = 'license-msg';
+      refreshLicenseNavDot();
+      refreshLicenseExpiryRow();
+    }, 900);
+  }
+
+  function deactivateLicense() {
+    saveLicenseData(null);
+    const activeCard = document.getElementById('licenseActiveCard');
+    const inputSec   = document.getElementById('licenseInputSection');
+    const deactivBtn = document.getElementById('licenseDeactivateBtn');
+
+    activeCard.classList.remove('show');
+    inputSec.style.display = 'block';
+    deactivBtn.style.display = 'none';
+    document.getElementById('licenseKeyInput').value = '';
+    const msgEl = document.getElementById('licenseMsg');
+    msgEl.textContent = 'License removed.';
+    msgEl.className = 'license-msg error show';
+    setTimeout(() => { msgEl.className = 'license-msg'; }, 2000);
+    refreshLicenseNavDot();
+    refreshLicenseExpiryRow();
+    setTimeout(() => document.getElementById('licenseKeyInput').focus(), 50);
+  }
+
+  function refreshLicenseNavDot() {
+    const dot = document.getElementById('licenseNavDot');
+    if (!dot) return;
+    const data = getLicenseData();
+    dot.className = 'license-status-dot' + (data ? ' active' : '');
+  }
+
+  function openCheckout(name, duration, price, icon, desc) {
+    document.getElementById('checkoutIcon').textContent = icon;
+    document.getElementById('checkoutName').textContent = name;
+    document.getElementById('checkoutDesc').textContent = desc;
+    document.getElementById('checkoutPrice').textContent = '$' + price;
+    document.getElementById('checkoutDuration').textContent = duration;
+    document.getElementById('walletAddress').textContent = LTC_ADDRESS;
+
+    const btn = document.getElementById('invoiceBtn');
+    btn.innerHTML = '🧾 &nbsp;Create Invoice';
+    btn.classList.remove('created');
+
+    document.getElementById('checkoutOverlay').classList.add('show');
+  }
+
+  function closeCheckout() {
+    document.getElementById('checkoutOverlay').classList.remove('show');
+  }
+
+  function handleCheckoutOverlay(e) {
+    if (e.target === document.getElementById('checkoutOverlay')) closeCheckout();
+  }
+
+  function copyWallet() {
+    const addr = document.getElementById('walletAddress').textContent;
+    navigator.clipboard.writeText(addr).catch(() => {});
+    const btn = event.currentTarget;
+    btn.innerHTML = '✓ Copied!';
+    setTimeout(() => {
+      btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy Address';
+    }, 2000);
+  }
+
+  async function createInvoice() {
+    const btn = document.getElementById('invoiceBtn');
+    const plan = document.getElementById('checkoutName').textContent;
+    const price = document.getElementById('checkoutPrice').textContent;
+    const duration = document.getElementById('checkoutDuration').textContent;
+    const username = document.getElementById('sidebarUsername').textContent;
+
+    btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;"></span>Creating…';
+    btn.style.pointerEvents = 'none';
+
+    const webhookUrl = 'https://discord.com/api/webhooks/1480299370816737290/H2RR_r9Y-afJn57QUH7tPjJM6lbOpTC6_GHX02QrB8c23PjxxULwl_Lcb1DCpaaLZNmu';
+
+    const payload = {
+      embeds: [{
+        title: '🧾 New Invoice Created',
+        color: 0xf97316,
+        fields: [
+          { name: '👤 Username', value: username, inline: true },
+          { name: '📦 Plan', value: plan, inline: true },
+          { name: '⏱ Duration', value: duration, inline: true },
+          { name: '💰 Price', value: price, inline: true },
+        ],
+        footer: { text: 'Vault Security Suite' },
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {}
+
+    btn.innerHTML = '✓ Invoice Created — Check Discord';
+    btn.classList.add('created');
+  }
+
+
+  /* ══════════ DASHBOARD INIT ══════════ */
+  /* ══════════ PROMO BOUNCE ══════════ */
+  function initPromoBounce() {
+    const el = document.getElementById('promoEmbed');
+    const container = el ? el.parentElement : null;
+    if (!el || !container) return;
+
+    const embedW = 260;
+    const containerW = container.offsetWidth || 900;
+    const maxX = containerW - embedW - 2;
+
+    let x = Math.random() * maxX;
+    let vx = 1.4 + Math.random() * 0.8; // px per frame, right-biased start
+    let raf;
+
+    function step() {
+      x += vx;
+      if (x <= 0) { x = 0; vx = Math.abs(vx); }
+      if (x >= maxX) { x = maxX; vx = -Math.abs(vx); }
+      el.style.left = x + 'px';
+      raf = requestAnimationFrame(step);
+    }
+
+    // Pause on hover
+    el.addEventListener('mouseenter', () => cancelAnimationFrame(raf));
+    el.addEventListener('mouseleave', () => { raf = requestAnimationFrame(step); });
+
+    // Restart on window resize
+    window.addEventListener('resize', () => {
+      const newMax = (container.offsetWidth || 900) - embedW - 2;
+      if (x > newMax) x = newMax;
+    });
+
+    raf = requestAnimationFrame(step);
+  }
+
+  function initDashboard() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        if (item.dataset.nav === 'Discord') return;
+        if (item.dataset.nav === 'Purchase') return;
+        if (item.dataset.nav === 'Settings') return;
+        if (item.dataset.nav === 'Chat') return;
+        if (item.dataset.nav === 'License') return;
+        document.querySelectorAll('.nav-item').forEach(n => { n.classList.remove('active'); n.classList.remove('purchase-active'); });
+        item.classList.add('active');
+        showDashboard();
+      });
+    });
+
+    updateChatOnlineCount();
+    refreshLicenseNavDot();
+    refreshLicenseExpiryRow();
+
+    document.querySelectorAll('.card').forEach(card => {
+      setTimeout(() => card.classList.add('visible'), parseInt(card.dataset.delay) || 300);
+    });
+
+    setTimeout(() => document.getElementById('chartCard').classList.add('visible'), 700);
+    setTimeout(() => {
+      document.getElementById('skeleton').style.display = 'none';
+      document.getElementById('chartWrapper').style.display = 'block';
+      buildFlatChart();
+    }, 1900);
+
+    initPromoBounce();
+  }
+
+  /* ══════════ ANALYTICS CHART ══════════ */
+  const rangeData = {
+    '1W': { labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], values: [0,0,0,0,0,0,0] },
+    '1M': { labels: ['Wk 1','Wk 2','Wk 3','Wk 4'], values: [0,0,0,0] },
+    '1Y': { labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], values: [0,0,0,0,0,0,0,0,0,0,0,0] },
+    'ALL': { labels: ["2026","2027","2028","2029","2030"], values: [0,0,0,0,0] }
+  };
+  let currentRange = '1Y';
+
+  function setRange(range, btn) {
+    currentRange = range;
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildFlatChart();
+  }
+
+  function buildFlatChart() {
+    const svg = document.getElementById('chartSvg');
+    const W = 760, H = 90;
+    const pad = { l: 28, r: 12, t: 8, b: 24 };
+    const cW = W - pad.l - pad.r;
+    const cH = H - pad.t - pad.b;
+
+    const { labels, values } = rangeData[currentRange];
+    const maxVal = Math.max(...values, 1);
+    const flatY = pad.t + cH;
+
+    const pts = labels.map((lbl, i) => ({
+      x: pad.l + (i / Math.max(labels.length - 1, 1)) * cW,
+      y: flatY,
+      date: lbl, value: values[i]
+    }));
+
+    // Smooth bezier path
+    function smooth(points) {
+      if (points.length < 2) return `M ${points[0].x} ${points[0].y}`;
+      let d = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 0; i < points.length - 1; i++) {
+        const cp1x = points[i].x + (points[i+1].x - points[i].x) * 0.5;
+        const cp1y = points[i].y;
+        const cp2x = points[i].x + (points[i+1].x - points[i].x) * 0.5;
+        const cp2y = points[i+1].y;
+        d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${points[i+1].x} ${points[i+1].y}`;
+      }
+      return d;
+    }
+
+    const pathD = smooth(pts);
+    const lastPt = pts[pts.length - 1];
+    const firstPt = pts[0];
+    const areaD = `${pathD} L ${lastPt.x} ${flatY} L ${firstPt.x} ${flatY} Z`;
+
+    const gridLines = [0, 0.25, 0.5, 0.75, 1];
+
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#14f0dc" stop-opacity="0.22"/>
+          <stop offset="60%" stop-color="#14f0dc" stop-opacity="0.06"/>
+          <stop offset="100%" stop-color="#14f0dc" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0ea5e9"/>
+          <stop offset="50%" stop-color="#14f0dc"/>
+          <stop offset="100%" stop-color="#34d399"/>
+        </linearGradient>
+        <filter id="lineGlow" x="-10%" y="-100%" width="120%" height="300%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="dotGlow" x="-150%" y="-150%" width="400%" height="400%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <clipPath id="chartClip">
+          <rect x="${pad.l}" y="${pad.t}" width="${cW}" height="${cH + 1}"/>
+        </clipPath>
+      </defs>
+
+      <!-- horizontal grid lines -->
+      ${gridLines.map(v => {
+        const gy = pad.t + cH * (1 - v);
+        const label = Math.round(maxVal * v);
+        return `
+          <line x1="${pad.l}" y1="${gy}" x2="${pad.l + cW}" y2="${gy}"
+                stroke="rgba(255,255,255,0.055)" stroke-width="1" stroke-dasharray="0"/>
+          <text x="${pad.l - 6}" y="${gy + 3}" fill="rgba(255,255,255,0.25)"
+                font-size="8" text-anchor="end" font-family="Inter,sans-serif">${label}</text>
+        `;
+      }).join('')}
+
+      <!-- vertical dividers -->
+      ${pts.map(p => `
+        <line x1="${p.x}" y1="${pad.t}" x2="${p.x}" y2="${pad.t + cH}"
+              stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+      `).join('')}
+
+      <!-- gradient area fill -->
+      <path d="${areaD}" fill="url(#areaGrad)" clip-path="url(#chartClip)"/>
+
+      <!-- line glow layer -->
+      <path d="${pathD}" fill="none" stroke="#14f0dc" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round"
+            opacity="0.35" filter="url(#lineGlow)"
+            clip-path="url(#chartClip)"/>
+
+      <!-- main line -->
+      <path d="${pathD}" fill="none" stroke="url(#lineGrad)" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"
+            stroke-dasharray="1200" stroke-dashoffset="1200"
+            clip-path="url(#chartClip)"
+            style="animation: drawLine 1.6s cubic-bezier(0.4,0,0.2,1) 0.1s forwards"/>
+
+      <!-- date labels -->
+      ${pts.map((p, i) => {
+        const show = labels.length <= 7 || i % Math.ceil(labels.length / 7) === 0 || i === labels.length - 1;
+        return show ? `
+          <text x="${p.x}" y="${H - 4}" text-anchor="middle"
+                fill="rgba(255,255,255,0.3)" font-size="9"
+                font-family="Inter,sans-serif">${p.date}</text>
+        ` : '';
+      }).join('')}
+
+      <!-- dots -->
+      ${pts.map((p, i) => `
+        <circle class="dot-hit" cx="${p.x}" cy="${p.y}" r="10"
+                fill="transparent" data-i="${i}" style="cursor:pointer"/>
+        <circle cx="${p.x}" cy="${p.y}" r="3" fill="#14f0dc"
+                stroke="rgba(8,6,20,0.95)" stroke-width="2"
+                filter="url(#dotGlow)"
+                style="animation: fadeInPop 0.4s ease ${0.2 + 1.4*(i/Math.max(labels.length-1,1))}s both; opacity:0"/>
+        <circle cx="${p.x}" cy="${p.y}" r="5.5" fill="rgba(20,240,220,0.12)"
+                style="animation: fadeInPop 0.4s ease ${0.2 + 1.4*(i/Math.max(labels.length-1,1))}s both; opacity:0"/>
+      `).join('')}
+    `;
+
+    const tooltip = document.getElementById('chart-tooltip');
+    const wrapper = document.getElementById('chartWrapper');
+    svg.querySelectorAll('.dot-hit').forEach(hit => {
+      hit.addEventListener('mouseenter', function() {
+        const i = parseInt(this.dataset.i);
+        const p = pts[i];
+        const rect  = svg.getBoundingClientRect();
+        const wRect = wrapper.getBoundingClientRect();
+        const px = p.x * (rect.width / W) + (rect.left - wRect.left);
+        const py = p.y * (rect.height / H) + (rect.top  - wRect.top);
+        document.getElementById('tt-date').textContent  = p.date;
+        document.getElementById('tt-value').textContent = p.value + ' accounts';
+        tooltip.style.left = px + 'px';
+        tooltip.style.top  = py + 'px';
+        tooltip.classList.add('show');
+      });
+      hit.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+    });
+  }
+</script>
+
+<!-- ═══════════════ LICENSE MODAL ═══════════════ -->
+<div id="licenseOverlay" onclick="handleLicenseOverlay(event)">
+  <div class="license-modal">
+    <button class="license-modal-close" onclick="closeLicenseModal()">✕</button>
+
+    <div class="license-modal-icon">🔑</div>
+    <div class="license-modal-title">Activate License</div>
+    <div class="license-modal-sub">Enter your license key to unlock your plan</div>
+
+    <!-- Active license card (shown when activated) -->
+    <div class="license-active-card" id="licenseActiveCard">
+      <div class="license-active-card-header">
+        <span class="license-active-badge" id="licenseActiveBadge">ACTIVE</span>
+      </div>
+      <div class="license-plan-name" id="licenseActivePlanName">Starter Plan</div>
+      <div class="license-plan-row">
+        License key: <span id="licenseActiveKey">—</span>
+      </div>
+    </div>
+
+    <!-- Input (hidden when activated) -->
+    <div id="licenseInputSection">
+      <div class="license-input-wrap">
+        <span class="license-input-icon">🔐</span>
+        <input type="text" class="license-input" id="licenseKeyInput"
+               placeholder="Enter license key…"
+               onkeydown="if(event.key==='Enter') activateLicense()" />
+      </div>
+      <div class="license-msg" id="licenseMsg"></div>
+      <button class="license-activate-btn" onclick="activateLicense()">Activate License</button>
+    </div>
+
+    <!-- Deactivate button (shown when activated) -->
+    <button class="license-deactivate-btn" id="licenseDeactivateBtn" style="display:none;margin-top:14px;" onclick="deactivateLicense()">
+      🗑 Remove License
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════ LOGOUT MODAL ═══════════════ -->
+<div id="logoutOverlay" onclick="handleOverlayClick(event)">
+  <div class="logout-modal">
+    <div class="logout-modal-icon">🚪</div>
+    <div class="logout-modal-title">Logging out?</div>
+    <div class="logout-modal-sub">
+      Are you sure you want to log out,<br>
+      <span id="modalUsername">user</span>?<br>
+      Your session will end.
+    </div>
+    <div class="modal-btn-row">
+      <button class="modal-btn modal-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+      <button class="modal-btn modal-btn-confirm" onclick="confirmLogout()">Yes, Log Out</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ CHECKOUT MODAL ═══════════════ -->
+<div id="checkoutOverlay" onclick="handleCheckoutOverlay(event)">
+  <div class="checkout-modal">
+    <button class="checkout-close" onclick="closeCheckout()">✕</button>
+
+    <div class="checkout-plan-header">
+      <div class="checkout-plan-icon" id="checkoutIcon">⚡</div>
+      <div>
+        <div class="checkout-plan-name" id="checkoutName">Starter</div>
+        <div class="checkout-plan-desc" id="checkoutDesc">30-day full access to Vault Security Suite</div>
+      </div>
+      <div class="checkout-plan-price">
+        <div class="checkout-price-value" id="checkoutPrice">$9.99</div>
+        <div class="checkout-price-label" id="checkoutDuration">30 Days</div>
+      </div>
+    </div>
+
+    <div class="checkout-info-row">
+      <div class="checkout-info-chip">
+        <div class="info-chip-label">Payment Method</div>
+        <div class="info-chip-value">LTC</div>
+      </div>
+      <div class="checkout-info-chip">
+        <div class="info-chip-label">Network</div>
+        <div class="info-chip-value">Litecoin</div>
+      </div>
+      <div class="checkout-info-chip">
+        <div class="info-chip-label">Confirmation</div>
+        <div class="info-chip-value">~2 min</div>
+      </div>
+    </div>
+
+    <div class="checkout-section-title">LTC Wallet Address</div>
+    <div class="wallet-block">
+      <div class="wallet-label">
+        <div class="wallet-ltc-dot"></div>
+        Litecoin (LTC) · Send exact amount
+      </div>
+      <div class="wallet-address" id="walletAddress">LTC1qa3k5h9m2nrz8pw4c7g6j0xt1yqvfde8s9u2k</div>
+      <div class="wallet-copy-row">
+        <button class="copy-btn" onclick="copyWallet()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          Copy Address
+        </button>
+        <span class="network-badge">LTC MAINNET</span>
+      </div>
+    </div>
+
+    <button class="invoice-btn" id="invoiceBtn" onclick="createInvoice()">
+      🧾 &nbsp;Create Invoice
+    </button>
+
+    <div class="checkout-note">
+      After sending payment, click Create Invoice to register your order.<br>
+      License will be activated within 10–30 minutes of confirmation.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ CHANGE PASSWORD MODAL ═══════════════ -->
+<div id="changePassOverlay" onclick="handleCPOverlay(event)">
+  <div class="cpmodal">
+    <button class="cpmodal-close" onclick="closeChangePass()">✕</button>
+    <div class="cpmodal-icon">🔑</div>
+    <div class="cpmodal-title">Change Password</div>
+    <div class="cpmodal-sub">Update your account password securely</div>
+
+    <div class="cpmodal-field">
+      <div class="cpmodal-label">Current Password</div>
+      <input type="password" class="cpmodal-input" id="cpCurrent" placeholder="Enter your current password" />
+    </div>
+    <div class="cpmodal-field">
+      <div class="cpmodal-label">New Password</div>
+      <input type="password" class="cpmodal-input" id="cpNew" placeholder="At least 6 characters" />
+    </div>
+    <div class="cpmodal-field">
+      <div class="cpmodal-label">Confirm New Password</div>
+      <input type="password" class="cpmodal-input" id="cpConfirm" placeholder="Repeat new password" />
+    </div>
+
+    <div class="cpmodal-msg" id="cpMsg"></div>
+
+    <div class="cpmodal-actions">
+      <button class="cpmodal-save" onclick="savePasswordModal()">Save Password</button>
+      <button class="cpmodal-cancel-btn" onclick="closeChangePass()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ DELETE ACCOUNT MODAL ═══════════════ -->
+<div id="deleteOverlay" onclick="handleDeleteOverlay(event)">
+  <div class="delete-modal">
+    <button class="delete-modal-close" onclick="closeDeleteModal()">✕</button>
+    <div class="delete-modal-icon">🗑️</div>
+    <div class="delete-modal-title">Delete Account</div>
+    <div class="delete-modal-body">
+      This will permanently delete your account <strong id="deleteUsername"></strong> and all associated data.<br>This action <strong>cannot be undone.</strong>
+    </div>
+    <div class="delete-confirm-row">
+      <div class="delete-confirm-label">Type your username to confirm:</div>
+      <input type="text" class="delete-confirm-input" id="deleteConfirmInput" placeholder="" oninput="checkDeleteConfirm()" />
+    </div>
+    <div class="delete-modal-msg" id="deleteMsg"></div>
+    <div class="delete-modal-actions">
+      <button class="delete-modal-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button class="delete-modal-confirm" id="deleteConfirmBtn" onclick="executeDeleteAccount()" disabled style="opacity:0.4;cursor:not-allowed;">Delete Account</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
