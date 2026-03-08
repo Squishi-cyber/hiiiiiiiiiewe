@@ -1846,6 +1846,9 @@
     .hex-input:focus { border-color: rgba(139,92,246,0.4); }
 
   </style>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -3335,11 +3338,37 @@
     document.getElementById('dashboardPage').style.display = 'block';
   }
 
-  /* ══════════ CHAT ══════════ */
-  function getChatMessages() {
-    try { return JSON.parse(localStorage.getItem('vault_chat') || '[]'); } catch { return []; }
+  /* ══════════ FIREBASE CHAT ══════════ */
+  // ─── PASTE YOUR FIREBASE CONFIG HERE ───────────────────────────────────────
+  const FIREBASE_CONFIG = {
+    apiKey:            "REPLACE_WITH_YOUR_API_KEY",
+    authDomain:        "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL:       "https://REPLACE_WITH_YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
+    storageBucket:     "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+    appId:             "REPLACE_WITH_YOUR_APP_ID"
+  };
+  // ───────────────────────────────────────────────────────────────────────────
+
+  let _firebaseApp = null;
+  let _firebaseDb  = null;
+  let _chatListener = null;
+
+  function getFirebaseDb() {
+    if (_firebaseDb) return _firebaseDb;
+    if (!firebase.apps || !firebase.apps.length) {
+      _firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
+    } else {
+      _firebaseApp = firebase.apps[0];
+    }
+    _firebaseDb = firebase.database();
+    return _firebaseDb;
   }
-  function saveChatMessages(msgs) { localStorage.setItem('vault_chat', JSON.stringify(msgs)); }
+
+  // Legacy stubs — no longer used for real storage but kept so nothing breaks
+  function getChatMessages() { return []; }
+  function saveChatMessages(msgs) { /* no-op: Firebase is source of truth */ }
 
   function showChat() {
     document.querySelectorAll('.nav-item').forEach(n => {
@@ -3355,10 +3384,21 @@
     document.getElementById('chatPage').style.display = 'flex';
     document.getElementById('chatPage').classList.add('active');
     document.getElementById('chatUnreadDot').style.display = 'none';
-    renderChatMessages();
+
+    // Attach Firebase real-time listener (only once)
+    if (!_chatListener) {
+      const db = getFirebaseDb();
+      const ref = db.ref('vault_chat').orderByChild('ts').limitToLast(200);
+      _chatListener = ref.on('value', snapshot => {
+        const data = snapshot.val();
+        const msgs = data ? Object.values(data).sort((a,b) => a.ts - b.ts) : [];
+        renderChatMessagesFromArray(msgs);
+        const container = document.getElementById('chatMessages');
+        container.scrollTop = container.scrollHeight;
+      });
+    }
+
     setTimeout(() => {
-      const msgs = document.getElementById('chatMessages');
-      msgs.scrollTop = msgs.scrollHeight;
       document.getElementById('chatInput').focus();
     }, 50);
   }
@@ -3371,8 +3411,9 @@
     } catch { return '🦁'; }
   }
 
-  function renderChatMessages() {
-    const msgs = getChatMessages();
+  function renderChatMessages() { /* legacy no-op */ }
+
+  function renderChatMessagesFromArray(msgs) {
     const container = document.getElementById('chatMessages');
     const currentUser = document.getElementById('sidebarUsername').textContent;
     const empty = document.getElementById('chatEmpty');
@@ -3440,56 +3481,12 @@
     if (!text) return;
 
     const currentUser = document.getElementById('sidebarUsername').textContent;
-    const msgs = getChatMessages();
-    msgs.push({ user: currentUser, text, ts: Date.now() });
-    saveChatMessages(msgs);
-
     input.value = '';
     input.style.height = 'auto';
 
-    const empty = document.getElementById('chatEmpty');
-    empty.style.display = 'none';
-
-    const container = document.getElementById('chatMessages');
-    const allMsgs = getChatMessages();
-    const i = allMsgs.length - 1;
-    const msg = allMsgs[i];
-    const isMine = true;
-    const prevMsg = allMsgs[i - 1];
-    const msgDate = new Date(msg.ts);
-    const dayKey = msgDate.toDateString();
-    const isGrouped = prevMsg && prevMsg.user === msg.user && (msg.ts - prevMsg.ts < 60000) && new Date(prevMsg.ts).toDateString() === dayKey;
-    const timeStr = msgDate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
-    const emoji = getAvatarEmojiForUser(msg.user);
-
-    // Day divider if needed
-    const existingDividers = container.querySelectorAll('.chat-day-divider');
-    const lastDivider = existingDividers[existingDividers.length - 1];
-    const lastDividerLabel = lastDivider ? lastDivider.querySelector('.chat-day-label').textContent : null;
-    const todayLabel = 'Today';
-    if (!lastDivider || lastDividerLabel !== todayLabel) {
-      const div = document.createElement('div');
-      div.className = 'chat-day-divider';
-      div.innerHTML = `<span class="chat-day-label">Today</span>`;
-      container.appendChild(div);
-    }
-
-    const el = document.createElement('div');
-    el.className = 'chat-msg mine' + (isGrouped ? ' grouped' : '');
-    el.innerHTML = `
-      <div class="chat-msg-avatar">${emoji}</div>
-      <div class="chat-msg-body">
-        <div class="chat-msg-header">
-          <span class="chat-msg-name me-name">${escapeHtml(msg.user)}</span>
-          <span class="chat-msg-time">${timeStr}</span>
-        </div>
-        <div class="chat-msg-bubble">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
-      </div>`;
-    container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
-
-    // Update last seen so we don't notify for our own message
-    _chatLastSeen = allMsgs.length;
+    // Push to Firebase — the real-time listener will render it for everyone
+    const db = getFirebaseDb();
+    db.ref('vault_chat').push({ user: currentUser, text, ts: Date.now() });
   }
 
   /* ══════════ CHAT NOTIFICATIONS ══════════ */
@@ -3526,78 +3523,10 @@
     } catch(e) {}
   }
 
-  function startChatPoll() {
-    if (_chatPollInterval) return;
-    _chatLastSeen = getChatMessages().length;
-    _chatPollInterval = setInterval(() => {
-      const msgs = getChatMessages();
-      if (msgs.length > _chatLastSeen) {
-        const newMsgs = msgs.slice(_chatLastSeen);
-        const currentUser = document.getElementById('sidebarUsername').textContent;
-        const hasOtherMsg = newMsgs.some(m => m.user !== currentUser);
-        const chatPage = document.getElementById('chatPage');
-        const isChatOpen = chatPage.classList.contains('active');
-
-        // If chat is open, render the new messages live
-        if (isChatOpen) {
-          const container = document.getElementById('chatMessages');
-          newMsgs.forEach((msg, idx) => {
-            const globalIdx = _chatLastSeen + idx;
-            const prevMsg = msgs[globalIdx - 1];
-            const msgDate = new Date(msg.ts);
-            const dayKey = msgDate.toDateString();
-            const isGrouped = prevMsg && prevMsg.user === msg.user && (msg.ts - prevMsg.ts < 60000) && new Date(prevMsg.ts).toDateString() === dayKey;
-            const isMine = msg.user === currentUser;
-            const timeStr = msgDate.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
-            const emoji = getAvatarEmojiForUser(msg.user);
-
-            // Day divider if needed
-            const dividers = container.querySelectorAll('.chat-day-divider');
-            const lastDiv = dividers[dividers.length - 1];
-            const lastDivLabel = lastDiv ? lastDiv.querySelector('.chat-day-label').textContent : null;
-            const todayLabel = msgDate.toDateString() === new Date().toDateString() ? 'Today' : msgDate.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
-            if (!lastDiv || lastDivLabel !== todayLabel) {
-              const d = document.createElement('div');
-              d.className = 'chat-day-divider';
-              d.innerHTML = `<span class="chat-day-label">${todayLabel}</span>`;
-              container.appendChild(d);
-            }
-
-            // Hide empty state
-            document.getElementById('chatEmpty').style.display = 'none';
-
-            const el = document.createElement('div');
-            el.className = 'chat-msg' + (isMine ? ' mine' : '') + (isGrouped ? ' grouped' : '');
-            el.innerHTML = `
-              <div class="chat-msg-avatar">${emoji}</div>
-              <div class="chat-msg-body">
-                <div class="chat-msg-header">
-                  <span class="chat-msg-name ${isMine ? 'me-name' : ''}">${escapeHtml(msg.user)}</span>
-                  <span class="chat-msg-time">${timeStr}</span>
-                </div>
-                <div class="chat-msg-bubble">${escapeHtml(msg.text).replace(/\n/g, '<br>')}</div>
-              </div>`;
-            container.appendChild(el);
-          });
-          container.scrollTop = container.scrollHeight;
-        }
-
-        // Sound + unread dot for messages from others
-        if (hasOtherMsg && currentStatus === 'online') {
-          playChatNotificationSound();
-          if (!isChatOpen) {
-            document.getElementById('chatUnreadDot').style.display = 'block';
-          }
-        }
-
-        _chatLastSeen = msgs.length;
-      }
-    }, 1000);
-  }
-
-  function stopChatPoll() {
-    if (_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval = null; }
-  }
+  // Firebase real-time listener replaces polling.
+  // startChatPoll/stopChatPoll kept as no-ops so existing call sites don't break.
+  function startChatPoll() {}
+  function stopChatPoll() {}
 
   function chatKeydown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
